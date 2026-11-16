@@ -52,6 +52,12 @@
       background: #14100b;
       z-index: 20;
     }
+    /* Author `display: flex` above would override the UA stylesheet rule
+       `[hidden] { display: none }` (author styles always win) — the panel
+       would then VISUALLY overlay the running game even with the hidden
+       attribute set and no error fired at all. This explicit rule makes
+       the hidden attribute effective again. */
+    #boot-error[hidden] { display: none; }
     #boot-error .panel {
       max-width: 640px;
       padding: 28px 36px;

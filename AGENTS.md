@@ -48,6 +48,7 @@ npm run preview      # تست بیلد روی :4173
 5. مبدأ اسپرایت‌های کاراکتر `(0.5, 1)` است (پایین‌وسط)؛ body پا `setSize(10,7) + setOffset(3,15)`.
 6. **Phaser AUTO فقط با getContext=null به Canvas fallback می‌کند** — «کانتکست موجود اما بی‌خروجی» روی بعضی ماشین‌ها صفحهٔ خالی بی‌صدا می‌دهد؛ خودآزمایی `RendererProbe` نباید حذف شود. خطاهای module-evaluation فقط با گارد inline در index.html گرفته می‌شوند (bundle هنوز اجرا نشده).
    و **بعد از باگ #5:** Phaser 4.2.1 در `WebGLRenderer.init` وقتی کانتکست خودش null/lost باشد **sync خطای `WebGL unsupported` پرتاب می‌کند**؛ هر بوت باید در `tryBoot` (main.ts) بماند تا سیاست `retryRenderer` یک‌بار Canvas را امتحان کند. import خود Phaser هم اگر `getContext('2d')` null بدهد می‌میرد (CanvasFeatures بدون گارد) — قابل‌رفع از سمت بازی نیست، پنل inline خطای واقعی را نشان می‌دهد؛ watchdog ۱۲s نباید پنلِ باز را بازنویسی کند.
+   و **دام CSS:** attribute `hidden` با قانون author مثل `#boot-error { display:flex }` باطل می‌شود (استایل author بر `[hidden]{display:none}` در UA استایل‌شیت مقدم است) → پنل با `hidden=true` به‌صورت بصری روی بازی می‌ماند. قاعدهٔ `#boot-error[hidden] { display:none }` در index.html باید بماند؛ هر عنصری که `hidden` و CSS `display` هم‌زمان دارد این دام را تکرار می‌کند. مدرک بصری فقط با **اسکرین‌شات صفحه** می‌آید — `toDataURL` محتوای زیر overlay را نمی‌بیند.
 7. `scripts/` این پروژه (fixture سازها) در مخزن نیستند — در فضای کاری ایجنت ساخته می‌شوند؛ الگوی stubها در TESTING.md مستند است.
 
 ## مالکیت state (مرجع سریع)
