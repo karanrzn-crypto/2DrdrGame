@@ -1,0 +1,45 @@
+# TESTING.md — تست و راستی‌آزمایی
+
+## تست واحد (Vitest، بدون مرورگر)
+
+```bash
+npm test   # ۲۸ تست، همه سبز
+```
+
+| فایل | پوشش |
+|---|---|
+| `tests/time.test.ts` | ساعت دنیا: نرخ پیشروی، wrap روز، مرزهای فاز، فرمت فارسی، visual config |
+| `tests/gamestate.test.ts` | پول (منفی/ناکافی)، clamp جان/درمان، مرگ |
+| `tests/mapdata.test.ts` | ابعاد، ایندکس‌های معتبر، انطباق مانع با COLLIDER_TILES، مهر مرز دنیا، walkable بودن spawn ها، گاز سیکارا، برکه، تابلوها، عدم هم‌پوشانی پروپ روی مانع |
+| `tests/interaction.test.ts` | انتخاب نزدیک‌ترین هدف، range شخصی، فاصله قطری، لیست خالی |
+
+قاعده: فقط ماژول‌های خالص test می‌شوند (بدون import Phaser) — لیست در `AGENTS.md`.
+
+## راستی‌آزمایی مرورگر واقعی (فاز ۱) — اجرا شد
+
+محیط: Chrome headless + `npm run build` + `npm run preview` (:4173).
+شواهد بصری: `docs/screenshots/*.png` (از `canvas.toDataURL` بوم واقعی — اسکرین‌شات صفحهٔ headless برای WebGL سیاه است؛ روش در AGENTS.md).
+
+| سناریو | نتیجه | شاهد |
+|---|---|---|
+| بوت: textureهای پروسیجرال + انتظار فونت + دو صحنه فعال | ✅ | console: banner Phaser 4.2.1، صفر error |
+| رندر دنیا (پیکسل مرکز بوم = رنگ جاده) | ✅ | readPixels = (184,156,114) |
+| حرکت W (~۰.۹s) | ✅ | y: 400→343 ≈ ۶۸px/s |
+| دویدن Shift+W (۱s) | ✅ | Δy≈۹۸px/s (شتاب‌دار تا ۱۱۲) |
+| برخورد مرز صخره‌ای (۴s W) | ✅ | توقف دقیق: بدنهٔ پا y=32..39 مقابل صخره تا y=32 |
+| پرومپت تعامل | ✅ | «E — گفتگو با مسافر» (فاصله ۹px) |
+| باز شدن دیالوگ با E | ✅ | پنل + گویندهٔ «مسافر» + تایپ‌رایتر تدریجی (۴۵/۵۰) |
+| پیشروی با Enter تا پایان | ✅ | lineIdx 0→1→2 → open:false |
+| freeze/unfreeze بازیکن | ✅ | velocity=0 هنگام دیالوگ |
+| مکث Esc | ✅ | worldActive:false + overlay:true |
+| ادامهٔ مکث (ESC دوم) | ✅ | worldActive:true + overlay:false |
+| شب (۲۱:۴۰) | ✅ | phase=night، overlay alpha=0.45، HUD «· شب» |
+| FPS headless (SwiftShader) | ~۴۴-۵۸ | روی سخت‌افزار واقعی بالاتر است |
+
+## کنسول نهایی
+
+پس از رفع سه باگ واقعی (فریم‌های انیمیشن، تایپ‌رایتر، مکث هم‌فریمی): **صفر error، صفر warning**.
+
+## پروسیجر تست هر فاز (الگوی تکرار)
+
+1. `npm test` سبز → 2. `npm run build` بدون خطا → 3. `npm run preview` + agent-browser → 4. سناریوهای فاز در مرورگر واقعی → 5. اسکرین‌شات/لاگ به‌عنوان مدرک → 6. ثبت در این فایل و KNOWN_ISSUES.
