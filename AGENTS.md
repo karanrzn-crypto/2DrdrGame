@@ -27,7 +27,7 @@ npm run preview      # تست بیلد روی :4173
 3. شبیه‌سازی به فریم‌ریت وابسته نیست: Arcade `fixedStep: true`، delta clamp ≤ 50ms در کدهای دستی.
 4. ماژول‌ها ≤ ~800 خط؛ تفکیک بر اساس مسئولیت، نه تعداد خط.
 5. قبل از بهینه‌سازی، اندازه‌گیری (`g.loop.actualFps`، شمارش entity).
-6. ادعای «در مرورگر تست شد» فقط با مدرک (اسکرین‌شات/لاگ)؛ روند در `docs/TESTING.md`.
+6. ادعای «در مرورگر تست شد» فقط با مدرک (اسکرین‌شات/لاگ)؛ روند در `docs/TESTING.md`. برای WebGL حتماً از `canvas.toDataURL` نه اسکرین‌شات صفحه؛ پنل `#boot-error` در تست‌های عادی باید hidden بماند.
 7. هر سیستم بعد از پیاده‌سازی باید در `docs/DEVELOPMENT_ROADMAP.md` وضعیت واقعی بگیرد: Planned / In progress / Implemented / Tested / Verified-in-browser / Complete.
 
 ## چگونه تست کنیم (شامل محیط headless)
@@ -35,6 +35,7 @@ npm run preview      # تست بیلد روی :4173
 - تست واحد: فقط ماژول‌های خالص (بدون import Phaser): `src/core/*`, `src/systems/InteractionSystem.ts`, `src/world/MapData.ts`, `src/assets/TileIds.ts`.
 - مرورگر: `npm run build && npm run preview` سپس agent-browser روی `http://localhost:4173`.
   - در این محیط، اسکرین‌شات صفحهٔ `agent-browser` برای WebGL سیاه می‌شود؛ از هوک `window.__coppergate` (عمدی و مستند در `main.ts`) + `canvas.toDataURL()` برای شواهد بصری استفاده کن. **این هوک را حذف نکن؛ secret هم ندارد.**
+  - شبیه‌سازی «GPU مرده» و «بدون رندرر» برای تست بوت: `scripts/make_deadgpu_fixture.mjs` و `scripts/make_norenderer_fixture.mjs` (روی کپی dist کار می‌کنند — الگو در TESTING.md، ماتریس بوت).
   - کلیدهای مصنوعی باید زمان‌بندی انسانی داشته باشند: `keydown` → صبر ≥ یک فریم → `keyup`. (در Phaser 4، keyup پرچم `_justDown` را صفر می‌کند — برخلاف Phaser 3.)
 - اسکرین‌شات‌های مرجع در `docs/screenshots/`.
 
@@ -45,6 +46,8 @@ npm run preview      # تست بیلد روی :4173
 3. کلید Esc در دو صحنه است (World: شروع مکث، UI: پایان) — resume فقط وقتی مجاز است که overlay از **فریم قبل** نمایان بوده باشد (`pauseWasVisiblePrevFrame`). همین الگو برای هر کلیدی که دو صحنه می‌شنود لازم است.
 4. `staticImage` برای برخورد پروپ‌ها استفاده نکن؛ مستطیل نامرئی + `physics.add.existing(box, true)` ساده‌تر و دقیق‌تر است.
 5. مبدأ اسپرایت‌های کاراکتر `(0.5, 1)` است (پایین‌وسط)؛ body پا `setSize(10,7) + setOffset(3,15)`.
+6. **Phaser AUTO فقط با getContext=null به Canvas fallback می‌کند** — «کانتکست موجود اما بی‌خروجی» روی بعضی ماشین‌ها صفحهٔ خالی بی‌صدا می‌دهد؛ خودآزمایی `RendererProbe` نباید حذف شود. خطاهای module-evaluation فقط با گارد inline در index.html گرفته می‌شوند (bundle هنوز اجرا نشده).
+7. `scripts/` این پروژه (fixture سازها) در مخزن نیستند — در فضای کاری ایجنت ساخته می‌شوند؛ الگوی stubها در TESTING.md مستند است.
 
 ## مالکیت state (مرجع سریع)
 
@@ -61,7 +64,8 @@ npm run preview      # تست بیلد روی :4173
 - مقادیر جدید با مقدار پیش‌فرض load شوند؛ دادهٔ خراب → پیام شفاف، نه crash.
 - تا آن زمان `GameState` فقط in-memory است — به localStorage در فازهای ≤۷ اعتماد نکن.
 
-## وضعیت فعلی (پس از فاز ۱)
+## وضعیت فعلی (پس از رفع باگ انتشار فاز ۱)
 
 - پیاده‌سازی‌شده و تأییدشده در مرورگر: حرکت/دویدن/برخورد/دوربین/تعامل/دیالوگ/مکث/ساعت روز-شب/HUD/پیکسل‌آرت پروسیجرال/تست واحد.
+- لایهٔ مقاوم‌سازی بوت: پروب رندرر + fallback Canvas + پنل خطای فارسی + دو watchdog + گارد فونت (ماتریس بوت در TESTING.md).
 - بعدی: فاز ۲ (شهر کامل با مغازه‌های واقعی) طبق `docs/DEVELOPMENT_ROADMAP.md`.

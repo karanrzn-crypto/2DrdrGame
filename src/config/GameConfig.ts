@@ -27,9 +27,9 @@ export const SCENES = {
   UI: 'UI',
 } as const;
 
-export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[]): Phaser.Types.Core.GameConfig {
+export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[], rendererType: number): Phaser.Types.Core.GameConfig {
   return {
-    type: Phaser.AUTO,
+    type: rendererType,
     width: GAME.width,
     height: GAME.height,
     backgroundColor: '#14100b',

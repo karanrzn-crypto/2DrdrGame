@@ -32,16 +32,25 @@ export class BootScene extends Phaser.Scene {
       this.scene.launch(SCENES.UI);
     };
 
-    // Wait for the Persian web font so UI text renders correctly,
-    // but never block the game for more than 1.5s (fallback: Tahoma).
+    // Idempotent: font success and the timeout may resolve together.
     let started = false;
     const startOnce = (): void => {
       if (started) return;
       started = true;
       start();
     };
+
+    // Wait for the Persian web font so UI text renders correctly,
+    // but never block the game for more than 1.5s (fallback: Tahoma).
+    // Guarded feature-detect: very old browsers may lack document.fonts
+    // entirely — the game must still boot there (BootGuard watchdog
+    // covers any other hang, per docs/KNOWN_ISSUES.md issue #4).
+    const fontsApi = (document as Document & { fonts?: { load(query: string): Promise<unknown> } }).fonts;
+    const fontReady: Promise<unknown> = fontsApi && typeof fontsApi.load === 'function'
+      ? fontsApi.load('16px Vazirmatn')
+      : Promise.resolve();
     Promise.race([
-      document.fonts.load('16px Vazirmatn'),
+      fontReady,
       new Promise((res) => setTimeout(res, 1500)),
     ]).then(startOnce, startOnce);
   }

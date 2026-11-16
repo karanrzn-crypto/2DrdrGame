@@ -6,7 +6,7 @@
 2. **ریشه:** مخزن خالی بود؛ انتخاب باید از فاز ۰ نهایی می‌شد.
 3. **راه‌حل انتخابی:** Phaser 4.2.1 + TypeScript strict + Vite + Vitest.
 4. **جایگزین‌ها:** (a) Canvas خام + TS — کنترل کامل ولی صرف زمان زیاد برای tilemap/کوادروت/صحنه‌ها؛ (b) Phaser 3 — API قدیمی‌تر و بدون TypeScript بومی؛ (c) JS بدون بیلد — بدون type safety.
-5. **مبادله‌ها:** وابستگی ~۳۸۴KB gzip به Phaser؛ در عوض صرفهٔ چشمگیر در زمان و استحکام. WebGL الزامی نیست (AUTO → Canvas fallback).
+5. **مبادله‌ها:** وابستگی ~۳۸۴KB gzip به Phaser؛ در عوض صرفهٔ چشمگیر در زمان و استحکام. WebGL الزامی نیست: پروب بوت (`src/boot/RendererProbe.ts`) در شروع، خروجی واقعی WebGL را با readPixels راستی‌آزمایی می‌کند و در صورت «کانتکست سالم اما رندر مرده» (سخت‌افزار/درایور محدود) خودکار به Canvas سوییچ می‌کند (بخش بوت در TESTING.md).
 6. **سیستم‌های تحت‌تأثیر:** همه — همهٔ ماژول‌ها روی این پشته سوارند.
 7. **تست:** بیلد پروداکشن + Vitest + راستی‌آزمایی مرورگر واقعی (docs/TESTING.md).
 
@@ -15,7 +15,9 @@
 ## ماژول‌ها و مسئولیت‌ها
 
 ```
-main.ts                    نقطهٔ ورود؛ هوک تست __coppergate (عمدی)
+main.ts                    نقطهٔ ورود؛ پروب رندرر + گارد بوت + هوک تست __coppergate (عمدی)
+boot/RendererProbe.ts      خودآزمایی draw+readPixels برای WebGL/Canvas2D (خالص از Phaser)
+boot/BootGuard.ts          پنل خطای فارسی + watchdog بوت (فلگ مشترک __cgReady)
 config/GameConfig.ts       ثابت‌های تنظیم حس بازی + پیکربندی Phaser
 core/EventBus.ts           پیام‌رسانی بین صحنه‌ها (بدون Phaser)
 core/GameState.ts          تک‌منبع حقیقت جان/پول (خالص، تست‌پذیر)
@@ -61,3 +63,5 @@ UIScene    ── PAUSE_STATE    ──► WorldScene (resume)
 - Canvas texture → ثبت فریم‌های شماره‌دار الزامی است (CharFactory).
 - keyup در Phaser 4 پرچم JustDown را می‌شوید → تست‌ها زمان‌بندی انسانی؛ کلیدهای دوصحنه‌ای با گارد «فریم قبل».
 - preserveDrawingBuffer برای اسکرین‌شات تست لازم است (هزینهٔ FPS ناچیز؛ در فاز ۱۰ دوباره سنجیده می‌شود).
+- **بوت دو لایه گارد دارد:** گارد زودهنگام inline در index.html خطاهای module-evaluation را می‌گیرد (قبل از اجرای bundle)، BootGuard.ts خطاهای بعد از bundle و توقف بوت را. فلگ واحد `window.__cgReady` بین این دو مشترک است — هر گارد جدید باید همان فلگ را بخواند.
+- **Phaser فقط وقتی از WebGL به Canvas می‌رود که getContext برابر null باشد**؛ «کانتکست موجود اما بی‌خروجی» را نمی‌بیند — پروب بوت این خلأ را پر می‌کند (ریشهٔ باگ انتشار فاز ۱؛ KNOWN_ISSUES.md #4).
