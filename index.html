@@ -27,7 +27,14 @@
       align-items: center;
       justify-content: center;
     }
-    #game canvas { image-rendering: pixelated; }
+    #game canvas {
+      image-rendering: pixelated;
+      /* Field bug #7: Phaser left the canvas display:inline; in this RTL
+         page an inline canvas does not become a proper flex item and the
+         layout could push it below the viewport. display:block makes the
+         centering inside #game deterministic. */
+      display: block;
+    }
     #loading {
       position: fixed;
       inset: 0;
@@ -89,7 +96,7 @@
       white-space: pre-wrap;
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-CUg8boFj.js"></script>
+  <script type="module" crossorigin src="./assets/index-DtnRdf6T.js"></script>
 </head>
 <body>
   <div id="game"></div>
@@ -97,8 +104,8 @@
   <div id="boot-error" dir="rtl" hidden>
     <div class="panel">
       <h2 id="boot-error-title">خطا در راه‌اندازی بازی</h2>
-      <p>متأسفانه «دروازهٔ مسی» نتوانست اجرا شود. رایج‌ترین علت، غیرفعال بودن شتاب‌دهی سخت‌افزاری مرورگر یا قدیمی بودن درایور گرافیک است.</p>
-      <p>راهکار: شتاب‌دهی سخت‌افزاری مرورگر را فعال کنید، مرورگر را با <b>Ctrl+Shift+R</b> تازه‌سازی کنید یا از نسخهٔ به‌روز کروم/فایرفاکس استفاده کنید.</p>
+      <p>متأسفانه «دروازهٔ مسی» نتوانست اجرا شود. علت دقیق در جعبهٔ جزئیات (پایین) ثبت شده است.</p>
+      <p>یک راه ساده: صفحه را با <b>Ctrl+Shift+R</b> تازه‌سازی کنید یا از نسخهٔ به‌روز کروم/فایرفاکس استفاده کنید.</p>
       <pre id="boot-error-detail"></pre>
     </div>
   </div>
