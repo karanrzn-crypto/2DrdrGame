@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildMap, isWalkable, MAP_W, MAP_H } from '../src/world/MapData';
-import { TILE, COLLIDER_TILES } from '../src/assets/TileIds';
+import { TILE, COLLIDER_TILES, MAX_TILE_INDEX } from '../src/assets/TileIds';
 
 describe('MapData — authored Phase-1 world', () => {
   const map = buildMap();
@@ -20,9 +20,9 @@ describe('MapData — authored Phase-1 world', () => {
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
         expect(map.ground[y][x]).toBeGreaterThanOrEqual(0);
-        expect(map.ground[y][x]).toBeLessThanOrEqual(15);
+        expect(map.ground[y][x]).toBeLessThanOrEqual(MAX_TILE_INDEX);
         const o = map.obstacles[y][x];
-        expect(o === -1 || (o >= 0 && o <= 15)).toBe(true);
+        expect(o === -1 || (o >= 0 && o <= MAX_TILE_INDEX)).toBe(true);
       }
     }
   });

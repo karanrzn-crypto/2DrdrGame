@@ -3,6 +3,10 @@
  * 6 frames per direction: 2 idle + 4 walk). One parametric draw function
  * generates the player AND every NPC from a CharLook, so all characters
  * share one consistent style (master directive §5).
+ *
+ * v2 visual overhaul: wardrobe system — coats, vests, neckerchiefs, hip
+ * holsters, belt buckles and wider brimmed hats. The silhouettes stay 16x22
+ * so movement code and animation frames are untouched.
  */
 import Phaser from 'phaser';
 import { PAL } from './Palette';
@@ -25,12 +29,22 @@ export interface CharLook {
   hat?: string;
   hatDark?: string;
   beard?: string;
+  /** Duster / poncho worn over the shirt (side tails + shoulders). */
+  coat?: string;
+  coatShade?: string;
+  /** Waistcoat worn over the shirt. */
+  vest?: string;
+  vestShade?: string;
+  /** Neckerchief / bandana at the collar. */
+  scarf?: string;
+  /** Gun belt with holster on the right hip. */
+  holster?: boolean;
   /** When set, the character wears a skirt (no separate legs). */
   skirt?: string;
 }
 
 function drawHead(pen: PixelPen, ox: number, oy: number, dir: number, look: CharLook): void {
-  const ink = '#241a10';
+  const ink = PAL.outline;
   // back hair / face per direction
   pen.rect(ox + 5, oy + 3, 6, 6, look.skin);
   if (dir === DIR.UP) {
@@ -60,17 +74,19 @@ function drawHead(pen: PixelPen, ox: number, oy: number, dir: number, look: Char
   }
   if (look.hat) {
     const hd = look.hatDark ?? PAL.hatDark;
-    pen.rect(ox + 4, oy + 2, 8, 1, look.hat);         // brim
-    pen.rect(ox + 4, oy + 3, 8, 1, hd);
+    pen.rect(ox + 3, oy + 2, 10, 1, look.hat);        // wide brim
+    pen.rect(ox + 3, oy + 3, 10, 1, hd);              // brim underside
     pen.rect(ox + 6, oy, 4, 2, look.hat);             // crown
-    pen.rect(ox + 6, oy + 1, 4, 1, hd);
+    pen.rect(ox + 6, oy + 1, 4, 1, hd);               // crown band
+    pen.px(ox + 6, oy + 2, hd);                       // brim crease
+    pen.px(ox + 9, oy + 2, hd);
   }
 }
 
 function drawFrame(
   pen: PixelPen, ox: number, oy: number, dir: number, frame: number, look: CharLook,
 ): void {
-  const ink = '#241a10';
+  const ink = PAL.outline;
   const walk = frame >= 2;
   const wf = walk ? frame - 2 : 0;                    // walk cycle 0..3
   const bob = frame === 1 || wf === 1 || wf === 3 ? 1 : 0;
@@ -101,14 +117,52 @@ function drawFrame(
   // torso
   pen.rect(ox + 5, top + 9, 6, 7, look.shirt);
   pen.rect(ox + 5, top + 14, 6, 2, look.shirtShade);
+
+  // vest over the shirt
+  if (look.vest) {
+    const vestShade = look.vestShade ?? look.boots;
+    pen.rect(ox + 5, top + 9, 6, 5, look.vest);
+    pen.rect(ox + 5, top + 9, 1, 5, vestShade);
+    pen.rect(ox + 10, top + 9, 1, 5, vestShade);
+    pen.rect(ox + 7, top + 9, 2, 5, look.shirt); // shirt strip between lapels
+  }
+
+  // coat: shoulders + side tails (swing subtly while walking)
+  if (look.coat) {
+    const coatShade = look.coatShade ?? look.coat;
+    const swing = walk ? (wf === 0 ? 1 : wf === 2 ? 0 : 0) : 0;
+    pen.rect(ox + 5, top + 9, 6, 1, look.coat);       // shoulder line
+    pen.rect(ox + 4, top + 10, 1, 6 + swing, look.coat);  // left tail
+    pen.rect(ox + 11, top + 10, 1, 6 + (1 - swing), look.coat); // right tail
+    pen.px(ox + 4, top + 15 + swing, coatShade);
+    pen.px(ox + 11, top + 15 + (1 - swing), coatShade);
+  }
+
+  // belt + buckle + holster
   pen.rect(ox + 5, top + 15, 6, 1, look.boots);       // belt
+  if (look.holster) {
+    pen.px(ox + 8, top + 15, PAL.brass);              // buckle
+    pen.rect(ox + 10, top + 16, 2, 3, ink);           // holster on the right hip
+    pen.rect(ox + 10, top + 13, 1, 3, ink);           // strap
+  }
 
   // arms (swing while walking)
   const armSwing = walk ? (wf === 0 ? -1 : wf === 2 ? 1 : 0) : 0;
-  pen.rect(ox + 4, top + 10 + armSwing, 1, 4, look.shirt);
-  pen.rect(ox + 11, top + 10 - armSwing, 1, 4, look.shirt);
+  const armCol = look.coat ?? look.shirt;
+  pen.rect(ox + 4, top + 10 + armSwing, 1, 4, armCol);
+  pen.rect(ox + 11, top + 10 - armSwing, 1, 4, armCol);
+  if (look.vest) {
+    pen.rect(ox + 4, top + 10 + armSwing, 1, 2, look.vest); // sleeve hint
+    pen.rect(ox + 11, top + 10 - armSwing, 1, 2, look.vest);
+  }
   pen.px(ox + 4, top + 14 + armSwing, look.skin);     // hands
   pen.px(ox + 11, top + 14 - armSwing, look.skin);
+
+  // neckerchief
+  if (look.scarf) {
+    pen.rect(ox + 6, top + 9, 4, 1, look.scarf);
+    pen.px(ox + 7, top + 10, look.scarf);             // tail
+  }
 
   // head + hat
   drawHead(pen, ox, top, dir, look);
@@ -174,7 +228,7 @@ export function createCharAnims(scene: Phaser.Scene, key: string): void {
   }
 }
 
-/** The player: Eli Boone — brown hat, rust-red shirt. */
+/** The player: Eli Boone — dusty duster coat, bandana, gun belt. */
 export const ELI_LOOK: CharLook = {
   skin: PAL.skin,
   skinShade: PAL.skinShade,
@@ -185,9 +239,13 @@ export const ELI_LOOK: CharLook = {
   boots: PAL.boots,
   hat: PAL.hatBrown,
   hatDark: PAL.hatDark,
+  coat: PAL.coatEli,
+  coatShade: PAL.coatEliDark,
+  scarf: PAL.bandana,
+  holster: true,
 };
 
-/** Old Pete — gray beard, farm hat. */
+/** Old Pete — gray beard, waistcoat, farm hat. */
 export const PETE_LOOK: CharLook = {
   skin: PAL.skin,
   skinShade: PAL.skinShade,
@@ -199,9 +257,11 @@ export const PETE_LOOK: CharLook = {
   hat: PAL.hatBrown,
   hatDark: PAL.hatDark,
   beard: PAL.hairGray,
+  vest: PAL.vestPete,
+  vestShade: PAL.vestPeteDark,
 };
 
-/** A traveler passing through — no hat, blue-gray shirt. */
+/** A traveler passing through — poncho, no hat. */
 export const TRAVELER_LOOK: CharLook = {
   skin: PAL.skin,
   skinShade: PAL.skinShade,
@@ -210,4 +270,7 @@ export const TRAVELER_LOOK: CharLook = {
   shirtShade: '#3e4a5e',
   pants: PAL.pantsDark,
   boots: PAL.boots,
+  coat: PAL.poncho,
+  coatShade: PAL.ponchoDark,
+  scarf: PAL.parchmentDark,
 };

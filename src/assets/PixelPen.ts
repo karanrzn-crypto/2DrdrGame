@@ -24,6 +24,25 @@ export class PixelPen {
   fill(color: string, w: number, h: number, ox = 0, oy = 0): void {
     this.rect(ox, oy, w, h, color);
   }
+
+  /**
+   * Radial falloff from inner color to transparent, used ONLY for soft
+   * light pools (lantern glows) and the screen vignette. Drawn as
+   * concentric alpha steps so it stays stable on Canvas and WebGL alike.
+   */
+  radial(cx: number, cy: number, radius: number, inner: string): void {
+    const steps = Math.max(6, Math.floor(radius / 4));
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(inner.slice(i, i + 2), 16));
+    for (let i = steps; i >= 1; i--) {
+      const t = i / steps;
+      const a = (1 - t) * (1 - t); // quadratic falloff
+      const rr = Math.round(radius * t);
+      this.ctx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(3)})`;
+      this.ctx.beginPath();
+      this.ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
 }
 
 export interface MadeTexture {
