@@ -19,6 +19,10 @@ export const GAME = {
   drag: 640,
   /** Time of day speed: world-minutes per real second. */
   minutesPerRealSecond: 2,
+  /** Clear color of the canvas (also the page background in index.html).
+   * Single source of truth — createGameConfig and the boot-time
+   * visible-output sampler both read it. */
+  backgroundColor: '#14100b',
 } as const;
 
 export const SCENES = {
@@ -32,7 +36,12 @@ export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[], render
     type: rendererType,
     width: GAME.width,
     height: GAME.height,
-    backgroundColor: '#14100b',
+    // CRITICAL (field bug #7): without an explicit parent Phaser appends the
+    // canvas to <body> AFTER the full-height #game block, pushing the canvas
+    // exactly one viewport down — the game renders off-screen and the player
+    // sees only the page background. Parent must be the #game container.
+    parent: 'game',
+    backgroundColor: GAME.backgroundColor,
     pixelArt: true,
     roundPixels: true,
     // Keeps the drawing buffer after each frame: required for reliable
@@ -42,7 +51,10 @@ export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[], render
     preserveDrawingBuffer: true,
     scale: {
       mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      // Centering is owned by the #game flex container (see index.html);
+      // Phaser's margin-based autoCenter double-shifts the canvas under an
+      // RTL page and must stay off (part of field bug #7).
+      autoCenter: Phaser.Scale.NO_CENTER,
     },
     // Arcade physics with a fixed 60Hz step (directive §16: simulation must
     // not depend on render frame rate).

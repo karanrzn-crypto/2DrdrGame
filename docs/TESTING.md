@@ -18,7 +18,7 @@ npm test   # ۲۸ تست، همه سبز
 ## راستی‌آزمایی مرورگر واقعی (فاز ۱) — اجرا شد
 
 محیط: Chrome headless + `npm run build` + `npm run preview` (:4173).
-شواهد بصری: `docs/screenshots/*.png` (از `canvas.toDataURL` بوم واقعی — اسکرین‌شات صفحهٔ headless برای WebGL سیاه است؛ روش در AGENTS.md).
+شواهد بصری: `docs/screenshots/*.png` — از باگ #7 به بعد **اسکرین‌شات واقعی صفحه** (بوم داخل viewport است)؛ در نسل‌های قبل از آن، از `canvas.toDataURL` بوم واقعی استفاده می‌شد. روش در AGENTS.md.
 
 | سناریو | نتیجه | شاهد |
 |---|---|---|
@@ -67,7 +67,22 @@ npm test   # ۲۸ تست، همه سبز
 | هیچ رندرری | getContext → null برای همه | Phaser در خود CanvasFeatures هنگام import خطا می‌دهد (بالادستی؛ باگ #5) → پنل inline گارد با متن واقعی خطا می‌ماند و دیگر با پیام عمومی watchdog ۱۲s بازنویسی نمی‌شود | ✅ (سطح قابل‌مشاهده) |
 | تست واحد سیاست retry | tests/renderer.test.ts | ۴ حالت retryRenderer + ۴ حالت chooseRenderer | ✅ |
 
-ابزار بازتولید: `scripts/make_boot_scenario_fixtures.mjs` (در فضای کاری ایجنت؛ چهار سناریو healthy/deadgpu/norenderer/glbootfail روی کپی dist).
+ابزار بازتولید آن نسل: `scripts/make_boot_scenario_fixtures.mjs` (نسل قبلی، در مخزن نبود) — جانشینِ در مخزن: `scripts/make_boot_fixture.mjs` (ماتریس نسخهٔ ۳).
+
+
+## ماتریس بوت — نسخهٔ ۳ (پس از باگ #7 در KNOWN_ISSUES: بوت خارج از viewport) — اجرا شد، همه سبز
+
+این نسخه دو چیز را به ارزیابی اضافه می‌کند: (۱) معیارِ «روی صفحه بودن» — بوم باید داخل viewport باشد (`canvasInViewport`)، نه فقط محتوا داشته باشد؛ (۲) اسکرین‌شاتِ واقعی صفحه به‌عنوان مدرک بصری (پس از کالیبراسیون باگ #7 معلوم شد این محیط محتوای بومِ داخل viewport را کامل ضبط می‌کند؛ تشخیص قبلیِ «برای WebGL سیاه است» ناشی از همین باگ بود).
+
+| سناریو | مکانیزم | نتیجهٔ قابل‌مشاهده | وضعیت |
+|---|---|---|---|
+| GPU سالم + بوم روی صفحه (رفع #7) | بدون شبیه‌سازی، بیلد پروداکشن :4173 | parent=game، rect=[127,0,1026×577]، inViewport=true، ready=true، **اسکرین‌شات صفحه: دنیای کامل با بوتیِر، تابلوی COPPERGATE، HUD فارسی**، صفر خطا | ✅ |
+| کانتکستِ بوت بین پروب و World بمیرد (contextdied) | fixture: کانتکست واقعی + `loseContext` در +۱۵۰ms (`scripts/make_boot_fixture.mjs`) | هشدار صادقانه «World scene is running but its canvas presents no visible output (visible 0/5184 ×۳)» → تخریب و بوت Canvas → ready=true، parent=game، روی صفحه، محتوا 5184/5184، صفر error | ✅ |
+| GPU از نظر پروب سبز ولی پایپ‌لاین بی‌صدا مرده (deadpipeline) | fixture: پروکسی draw/clear بی‌اثر + readPixels صفر + expandos (همان اسکریپت) | همان مسیر: تشخیص بی‌خروجی → retry Canvas → بازی روی صفحه، صفر error | ✅ |
+| حرکت بازیکن بعد از رفع | keydown مصنوعی `KeyW` (۱s) | y: 400→329 ≈ ۶۸px/s (سرعت پیاده‌روی) | ✅ |
+| تست واحد دروازهٔ viewport | tests/visiblecheck.test.ts | `rectInViewport` شش حالت، از جمله امضای دقیق سایت منتشرشده [254,577,1026×577] | ✅ |
+
+ابزار بازتولید: `scripts/make_boot_fixture.mjs` (این بار **در مخزن** کامیت شد؛ دو سناریو contextdied/deadpipeline روی کپی dist).
 
 ## پروسیجر تست هر فاز (الگوی تکرار)
 

@@ -3,9 +3,10 @@
  * Original game: Coppergate (Phase 1 playable prototype).
  *
  * Boot sequence (root-cause fix for the deployed blank-screen bug, then
- * hardened against the "WebGL unsupported" field failure):
+ * hardened against the "WebGL unsupported" field failure, then hardened
+ * against "game context dead after the probe passed"):
  * 1. installBootGuard  — global errors become a visible Persian panel.
- * 2. probeRenderer     — verify the WebGL pipeline actually draws and
+ * 2. probeRenderer     — verify a RAW WebGL pipeline actually draws and
  *                        reads back a known pattern. On machines where a
  *                        WebGL context exists but rasterizes nothing,
  *                        Phaser's AUTO fallback never fires (it only
@@ -22,12 +23,26 @@
  *                        Canvas renderer (retryRenderer policy), and only
  *                        a boot that fails on BOTH renderers opens the
  *                        error panel.
- * 5. armBootWatchdog   — if the World scene is not running within
+ * 5. Verify visible output — scene status alone is NOT success: Phaser's
+ *                        real context can die or present nothing AFTER the
+ *                        4x4 probe passed while every scene keeps reporting
+ *                        RUNNING (no error is ever thrown — CPU-side logic
+ *                        is unaffected). Once the World scene is up, the
+ *                        readiness flow samples the game canvas through the
+ *                        compositor path (2D drawImage — VisibleCheck.ts)
+ *                        and only marks the game ready when real game
+ *                        content is on screen. A canvas that stays at the
+ *                        clear color triggers the SAME one-shot Canvas
+ *                        retry; the panel opens only if that fails too.
+ * 6. armBootWatchdog   — if the World scene is not running within
  *                        BOOT_WATCHDOG_MS, the same Canvas retry runs
  *                        once; the panel shows only if that fails too.
+ *                        (Stale watchdogs from superseded attempts are
+ *                        silenced by a token, never firing a premature
+ *                        panel over a healthy in-flight retry.)
  */
 import Phaser from 'phaser';
-import { createGameConfig, SCENES } from './config/GameConfig';
+import { createGameConfig, SCENES, GAME } from './config/GameConfig';
 import { BootScene } from './scenes/BootScene';
 import { WorldScene } from './scenes/WorldScene';
 import { UIScene } from './scenes/UIScene';
@@ -38,6 +53,13 @@ import {
   describeGL,
   RendererChoice,
 } from './boot/RendererProbe';
+import {
+  countVisiblePixels,
+  visibleOutputDead,
+  canvasInViewport,
+  VISIBLE_CHECK,
+  SampleResult,
+} from './boot/VisibleCheck';
 import {
   installBootGuard,
   armBootWatchdog,
@@ -76,6 +98,11 @@ function boot(): void {
   let game: Phaser.Game | null = null;
   const failures: string[] = [];
   let poll = 0;
+  let sampleTimer = 0;
+  let confirmed = false;
+  let samples: SampleResult[] = [];
+  /** Supersedes stale watchdogs when a newer attempt takes over. */
+  let watchdogToken = 0;
 
   const stopPoll = (): void => {
     if (poll) {
@@ -84,15 +111,31 @@ function boot(): void {
     }
   };
 
-  /** Readiness poll: mark ready once the World scene is up and simulating. */
-  const startReadinessPoll = (): void => {
+  const stopSampleTimer = (): void => {
+    if (sampleTimer) {
+      window.clearTimeout(sampleTimer);
+      sampleTimer = 0;
+    }
+  };
+
+  const disarmAll = (): void => {
     stopPoll();
-    poll = window.setInterval(() => {
-      if (isWorldRunning()) {
-        markGameReady();
-        stopPoll();
-      }
-    }, 250);
+    stopSampleTimer();
+  };
+
+  /** Success = World scene running AND real content verified on screen. */
+  const confirmReady = (): void => {
+    if (confirmed) return;
+    confirmed = true;
+    disarmAll();
+    markGameReady();
+  };
+
+  /** Persian summary of what the sampler saw (error panel / debugging). */
+  const visualDiagnostics = (): string => {
+    if (!samples.length) return 'visible-output check: no samples taken';
+    return 'visible-output samples: '
+      + samples.map((s) => (s.status === 'ok' ? s.detail : 'skipped (' + s.detail + ')')).join('; ');
   };
 
   /** One boot attempt. Returns false only when Phaser threw synchronously. */
@@ -119,34 +162,129 @@ function boot(): void {
     return true;
   };
 
+  /**
+   * The single retry path — used by BOTH failure detectors:
+   * (a) the watchdog (World never even starts) and
+   * (b) the visible-output check (World runs but the screen stays empty).
+   * Returns true when a Canvas retry is underway, false when the policy
+   * says nothing is left (caller must open the panel).
+   */
+  const retryWithCanvas = (reason: string): boolean => {
+    const next = retryRenderer(initial, attempt + 1);
+    if (next !== 'canvas' || !probe.canvas2dDraws || !game) return false;
+    attempt += 1;
+    confirmed = false;
+    samples = [];
+    disarmAll();
+    console.warn('[Coppergate] ' + reason + ' — retrying with the Canvas renderer. ' + glInfo);
+    // Teardown: destroy may be deferred to the game's next step, so any
+    // canvas that exists NOW belongs to the failed attempt and is removed
+    // shortly after — before the retry appends its own.
+    const stale = Array.from(document.querySelectorAll('canvas'));
+    try {
+      game.destroy(true, false);
+    } catch {
+      /* best-effort teardown of a stuck boot */
+    }
+    game = null;
+    window.setTimeout(() => {
+      for (const c of stale) c.remove();
+    }, 50);
+    return tryBoot('canvas');
+  };
+
   /** Watchdog for one attempt: World not running → one Canvas retry, else panel. */
   const armWatchdog = (choice: RendererChoice): void => {
     const bootInfo = 'attempt: ' + (attempt + 1) + '/' + choice + '\n' + glInfo
       + (failures.length ? '\n' + failures.join('\n') : '');
+    const token = ++watchdogToken;
     armBootWatchdog(bootInfo, () => {
-      const next = retryRenderer(choice, attempt + 1);
-      if (next !== 'canvas' || !probe.canvas2dDraws || !game) return false;
-      attempt += 1;
-      console.warn(
-        '[Coppergate] World scene did not start with the "' + choice + '" renderer within '
-        + BOOT_WATCHDOG_MS + 'ms. Destroying the game and retrying with the Canvas renderer. '
-        + glInfo,
+      if (token !== watchdogToken) return true; // superseded — a newer attempt owns the boot
+      return retryWithCanvas(
+        'World scene did not start within ' + BOOT_WATCHDOG_MS + 'ms (watchdog)',
       );
-      // Teardown: destroy may be deferred to the game's next step, so any
-      // canvas that exists NOW belongs to the failed attempt and is removed
-      // shortly after — before the retry appends its own.
-      const stale = Array.from(document.querySelectorAll('canvas'));
-      try {
-        game.destroy(true, false);
-      } catch {
-        /* best-effort teardown of a stuck boot */
-      }
-      game = null;
-      window.setTimeout(() => {
-        for (const c of stale) c.remove();
-      }, 50);
-      return tryBoot('canvas');
     });
+  };
+
+  /** One compositor-path sample of the live game canvas. */
+  const takeSample = (): void => {
+    if (confirmed || !game || !game.canvas) return;
+    const s = countVisiblePixels(game.canvas, GAME.backgroundColor);
+    samples.push(s);
+    if (s.status === 'ok' && s.ratio >= VISIBLE_CHECK.MIN_VISIBLE_RATIO) {
+      // Content is on the canvas — but content alone is not success: a
+      // layout bug can park the fully-rendered canvas OUTSIDE the viewport
+      // (field bug #7: the player then sees only the page background while
+      // every scene reports healthy). Ready requires BOTH.
+      const pos = canvasInViewport(game.canvas);
+      if (!pos.ok) {
+        disarmAll();
+        showBootError(
+          'بازی اجرا شد ولی بوم آن خارج از صفحهٔ نمایش قرار گرفت',
+          'دنیای بازی فعال بود و محتوا تولید می‌کرد، اما بوم بازی داخل پنجرهٔ مرورگر نبود'
+          + ' — این یک ایراد چیدمان صفحه است، نه شتاب‌دهی سخت‌افزاری.\n'
+          + pos.detail + '\n'
+          + visualDiagnostics() + '\n'
+          + glInfo,
+        );
+        return;
+      }
+      confirmReady();
+    }
+  };
+
+  const finishSampling = (): void => {
+    const verdict = visibleOutputDead(samples);
+    if (!verdict.dead) {
+      confirmReady(); // only reachable via the fail-open branch — stay honest
+      return;
+    }
+    const reason = 'World scene is running but its canvas presents no visible output '
+      + '(' + verdict.detail + ')';
+    if (!retryWithCanvas(reason)) {
+      disarmAll();
+      showBootError(
+        'مرورگر شما امکان رندر بازی را ندارد',
+        'دنیای بازی فعال بود ولی هیچ خروجی قابل‌مشاهده‌ای روی صفحه تولید نشد — حتی پس از تلاش مجدد با Canvas.\n'
+        + visualDiagnostics() + '\n'
+        + (failures.length ? failures.join('\n') + '\n' : '')
+        + glInfo + '\n'
+        + 'userAgent: ' + navigator.userAgent,
+      );
+    }
+  };
+
+  const runSampleChain = (): void => {
+    if (confirmed || !game) return;
+    takeSample();
+    if (confirmed) return;
+    const okCount = samples.filter((s) => s.status === 'ok').length;
+    if (okCount >= VISIBLE_CHECK.SAMPLES) {
+      finishSampling();
+      return;
+    }
+    sampleTimer = window.setTimeout(runSampleChain, VISIBLE_CHECK.INTERVAL_MS);
+  };
+
+  /**
+   * Readiness flow: wait for the World scene, give it a short grace period
+   * (font wait is done, World create finished), then verify through the
+   * compositor path that real game content reached the screen. Ready is
+   * confirmed at the FIRST healthy sample; only samples that stay at the
+   * clear color continue the chain toward the Canvas retry.
+   */
+  const startReadinessPoll = (): void => {
+    disarmAll();
+    samples = [];
+    poll = window.setInterval(() => {
+      if (confirmed) {
+        stopPoll();
+        return;
+      }
+      if (!isWorldRunning()) return;
+      stopPoll();
+      sampleTimer = window.setTimeout(runSampleChain, VISIBLE_CHECK.GRACE_MS);
+    }, 250);
   };
 
   // Attempt 0 — the probe-based choice.
@@ -170,7 +308,7 @@ function boot(): void {
   }
 
   // No renderer booted — open the panel with everything we collected.
-  stopPoll();
+  disarmAll();
   showBootError(
     'مرورگر شما امکان رندر بازی را ندارد',
     'هیچ‌یک از رندررهای بازی اجرا نشد.\n'
