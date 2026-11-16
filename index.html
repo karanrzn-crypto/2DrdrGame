@@ -127,6 +127,8 @@
       });
       window.setTimeout(function () {
         if (window.__cgReady) return;
+        var p = document.getElementById('boot-error');
+        if (p && !p.hidden) return; // a real error panel is already visible — never overwrite it with the generic watchdog message
         show(
           'بازی بارگذاری نشد',
           'فایل‌های بازی تا ۱۲ ثانیه اجرا نشدند. اتصال اینترنت را بررسی کنید و با Ctrl+Shift+R تازه‌سازی کنید (کش مرورگر).'

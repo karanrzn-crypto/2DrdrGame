@@ -152,12 +152,17 @@ export function collectDiagnostics(extra: string): string {
 /**
  * Watchdog: if the World scene is not running after BOOT_WATCHDOG_MS,
  * surface a visible, actionable panel instead of hanging forever.
+ *
+ * onFired may return true to report "handled": the caller is retrying the
+ * boot with the other renderer (main.ts retryRenderer policy), so the
+ * panel is suppressed for THIS firing and the caller re-arms a fresh
+ * watchdog. Return false/undefined to show the panel as before.
  */
-export function armBootWatchdog(bootInfo: string, onFired?: () => void): void {
+export function armBootWatchdog(bootInfo: string, onFired?: () => boolean): void {
   window.setTimeout(() => {
     if (isReady() || watchdogFired) return;
+    if (onFired?.() === true) return; // retry underway — caller re-armed a watchdog
     watchdogFired = true;
-    onFired?.();
     showPanel(
       'بازی بیش از حد انتظار در راه‌اندازی توقف کرد',
       collectDiagnostics(bootInfo),

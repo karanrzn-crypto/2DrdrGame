@@ -2,7 +2,8 @@
  * main.ts — application entry point.
  * Original game: Coppergate (Phase 1 playable prototype).
  *
- * Boot sequence (root-cause fix for the deployed blank-screen bug):
+ * Boot sequence (root-cause fix for the deployed blank-screen bug, then
+ * hardened against the "WebGL unsupported" field failure):
  * 1. installBootGuard  — global errors become a visible Persian panel.
  * 2. probeRenderer     — verify the WebGL pipeline actually draws and
  *                        reads back a known pattern. On machines where a
@@ -12,15 +13,31 @@
  *                        players with a silent blank screen.
  * 3. chooseRenderer    — AUTO (WebGL works) / CANVAS (silently dead GPU)
  *                        / none (no usable 2D output → error panel).
- * 4. armBootWatchdog   — if the World scene is not running within
- *                        BOOT_WATCHDOG_MS, show an actionable panel.
+ * 4. Boot with feedback — Phaser's WebGLRenderer.init throws synchronously
+ *                        ('WebGL unsupported') when its own context
+ *                        creation fails or is lost, even though the probe
+ *                        passed milliseconds earlier (GPU process crash,
+ *                        context churn). Every boot attempt is therefore
+ *                        wrapped: a failed AUTO boot retries ONCE with the
+ *                        Canvas renderer (retryRenderer policy), and only
+ *                        a boot that fails on BOTH renderers opens the
+ *                        error panel.
+ * 5. armBootWatchdog   — if the World scene is not running within
+ *                        BOOT_WATCHDOG_MS, the same Canvas retry runs
+ *                        once; the panel shows only if that fails too.
  */
 import Phaser from 'phaser';
 import { createGameConfig, SCENES } from './config/GameConfig';
 import { BootScene } from './scenes/BootScene';
 import { WorldScene } from './scenes/WorldScene';
 import { UIScene } from './scenes/UIScene';
-import { probeRenderer, chooseRenderer, describeGL } from './boot/RendererProbe';
+import {
+  probeRenderer,
+  chooseRenderer,
+  retryRenderer,
+  describeGL,
+  RendererChoice,
+} from './boot/RendererProbe';
 import {
   installBootGuard,
   armBootWatchdog,
@@ -32,11 +49,18 @@ import {
 
 installBootGuard();
 
+/** Shape of the intentional, documented browser-test hook (see AGENTS.md). */
+interface CoppergateHook {
+  game: Phaser.Game;
+  sceneKeys: string[];
+  rendererChoice: RendererChoice;
+}
+
 function boot(): void {
   const probe = probeRenderer();
-  const choice = chooseRenderer(probe);
+  const initial = chooseRenderer(probe);
 
-  if (choice === 'none') {
+  if (initial === 'none') {
     showBootError(
       'مرورگر شما امکان رندر بازی را ندارد',
       'نه WebGL و نه Canvas 2D در این مرورگر قابل استفاده نبود.\n'
@@ -46,41 +70,114 @@ function boot(): void {
     return;
   }
 
-  if (choice === 'canvas') {
-    // The player-facing behavior is unchanged (game looks identical);
-    // this log is the honest trace of the fallback, per directive §54.
-    console.warn(
-      '[Coppergate] WebGL pipeline failed the boot self-test (draws nothing). '
-      + 'Falling back to the Canvas renderer. ' + probe.glInfo,
-    );
-  }
+  const hook = window as unknown as { __coppergate?: CoppergateHook };
+  const glInfo = probe.glInfo;
+  let attempt = 0; // 0-based index of the CURRENT boot attempt
+  let game: Phaser.Game | null = null;
+  const failures: string[] = [];
+  let poll = 0;
 
-  const rendererType = choice === 'auto' ? Phaser.AUTO : Phaser.CANVAS;
-  const gameInstance = new Phaser.Game(
-    createGameConfig([BootScene, WorldScene, UIScene], rendererType),
-  );
-
-  /**
-   * Intentional, documented test hook (see AGENTS.md): lets browser-test
-   * tooling inspect scene state. It exposes no credentials or secrets.
-   */
-  (window as unknown as { __coppergate: unknown }).__coppergate = {
-    game: gameInstance,
-    sceneKeys: Object.values(SCENES),
-    rendererChoice: choice,
+  const stopPoll = (): void => {
+    if (poll) {
+      window.clearInterval(poll);
+      poll = 0;
+    }
   };
 
-  // Watchdog + readiness: the panel may only fire while the World scene
-  // is not yet up; after that the game owns any error reporting.
-  const bootInfo = 'renderer choice: ' + choice + '\n' + probe.glInfo;
-  armBootWatchdog(bootInfo);
-  const poll = window.setInterval(() => {
-    if (isWorldRunning()) {
-      markGameReady();
-      window.clearInterval(poll);
+  /** Readiness poll: mark ready once the World scene is up and simulating. */
+  const startReadinessPoll = (): void => {
+    stopPoll();
+    poll = window.setInterval(() => {
+      if (isWorldRunning()) {
+        markGameReady();
+        stopPoll();
+      }
+    }, 250);
+  };
+
+  /** One boot attempt. Returns false only when Phaser threw synchronously. */
+  const tryBoot = (choice: RendererChoice): boolean => {
+    const rendererType = choice === 'auto' ? Phaser.AUTO : Phaser.CANVAS;
+    try {
+      game = new Phaser.Game(createGameConfig([BootScene, WorldScene, UIScene], rendererType));
+    } catch (err) {
+      game = null;
+      const msg = err instanceof Error ? err.message : String(err);
+      failures.push('attempt ' + (attempt + 1) + ' (' + choice + '): ' + msg);
+      return false;
     }
-  }, 250);
-  window.setTimeout(() => window.clearInterval(poll), BOOT_WATCHDOG_MS);
+    if (attempt > 0) {
+      // Honest trace of the fallback, per directive §54.
+      console.warn(
+        '[Coppergate] Boot attempt ' + (attempt + 1) + ': using the Canvas renderer '
+        + 'after the previous renderer failed. ' + glInfo,
+      );
+    }
+    hook.__coppergate = { game, sceneKeys: Object.values(SCENES), rendererChoice: choice };
+    armWatchdog(choice);
+    startReadinessPoll();
+    return true;
+  };
+
+  /** Watchdog for one attempt: World not running → one Canvas retry, else panel. */
+  const armWatchdog = (choice: RendererChoice): void => {
+    const bootInfo = 'attempt: ' + (attempt + 1) + '/' + choice + '\n' + glInfo
+      + (failures.length ? '\n' + failures.join('\n') : '');
+    armBootWatchdog(bootInfo, () => {
+      const next = retryRenderer(choice, attempt + 1);
+      if (next !== 'canvas' || !probe.canvas2dDraws || !game) return false;
+      attempt += 1;
+      console.warn(
+        '[Coppergate] World scene did not start with the "' + choice + '" renderer within '
+        + BOOT_WATCHDOG_MS + 'ms. Destroying the game and retrying with the Canvas renderer. '
+        + glInfo,
+      );
+      // Teardown: destroy may be deferred to the game's next step, so any
+      // canvas that exists NOW belongs to the failed attempt and is removed
+      // shortly after — before the retry appends its own.
+      const stale = Array.from(document.querySelectorAll('canvas'));
+      try {
+        game.destroy(true, false);
+      } catch {
+        /* best-effort teardown of a stuck boot */
+      }
+      game = null;
+      window.setTimeout(() => {
+        for (const c of stale) c.remove();
+      }, 50);
+      return tryBoot('canvas');
+    });
+  };
+
+  // Attempt 0 — the probe-based choice.
+  if (tryBoot(initial)) {
+    return;
+  }
+
+  // Attempt 1 — Phaser's WebGL boot threw synchronously ('WebGL unsupported'
+  // or 'Cannot create WebGL context'). Canvas is the last resort, and only
+  // if the probe proved 2D output actually works on this machine.
+  const retry = retryRenderer(initial, 1);
+  if (retry === 'canvas' && probe.canvas2dDraws) {
+    attempt = 1;
+    console.warn(
+      '[Coppergate] WebGL boot threw synchronously (' + failures[0] + '). '
+      + 'Retrying with the Canvas renderer. ' + glInfo,
+    );
+    if (tryBoot('canvas')) {
+      return;
+    }
+  }
+
+  // No renderer booted — open the panel with everything we collected.
+  stopPoll();
+  showBootError(
+    'مرورگر شما امکان رندر بازی را ندارد',
+    'هیچ‌یک از رندررهای بازی اجرا نشد.\n'
+    + failures.join('\n') + '\n'
+    + describeGL() + '\n'
+    + 'userAgent: ' + navigator.userAgent,
+  );
 }
 
 boot();

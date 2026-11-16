@@ -55,6 +55,20 @@ npm test   # ۲۸ تست، همه سبز
 
 پس از رفع: خروجی GPU مرده از ۱۶,۴۲۶ کاراکتر (خالی) به ~۷۷,۲۷۴ (رندر کامل) رسید؛ FPS fallback روی SwiftShader ≈ ۵۷-۶۰.
 
+## ماتریس بوت — نسخهٔ ۲ (پس از باگ #5 در KNOWN_ISSUES) — اجرا شد، همه سبز
+
+سناریوی پنجم همان باگ گزارش کاربر بود: پروب پاس می‌شود ولی Phaser در لحظهٔ ساخت کانتکست خودش شکست می‌خورد (مثل کرش GPU-process بین پروب و بوت). شبیه‌سازی: سه فراخوان اول webgl موفق (Features در import + probeWebGL + describeGL)، از چهارمی به بعد null — بیلد پروداکشن :4183.
+
+| سناریو | مکانیزم | نتیجهٔ قابل‌مشاهده | وضعیت |
+|---|---|---|---|
+| **WebGL از نظر پروب سالم ولی بوت WebGL خطای sync می‌دهد (گزارش کاربر)** | stub: webgl فقط ۳ بار اول موفق، بعدی null؛ 2d واقعی | قبل از رفع: پنل «خطا در راه‌اندازی بازی» + `Uncaught Error: WebGL unsupported` و هیچ retry. بعد از رفع: هشدار صادقانه در کنسول، Phaser v4.2.1 (Canvas) بوت می‌شود، World+UI فعال، خروجی کامل (~۷۵KB)، رنگ جاده (184,156,114)، حرکت با W ✓، صفر خطا، یک canvas در DOM | ✅ |
+| GPU سالم (بدون تغییر) | بدون شبیه‌سازی | choice=auto، WebGL، صفر خطا | ✅ |
+| GPU مرده (بدون تغییر) | همان پروکسی قبلی | choice=canvas از مسیر پروب، صفر خطا | ✅ |
+| هیچ رندرری | getContext → null برای همه | Phaser در خود CanvasFeatures هنگام import خطا می‌دهد (بالادستی؛ باگ #5) → پنل inline گارد با متن واقعی خطا می‌ماند و دیگر با پیام عمومی watchdog ۱۲s بازنویسی نمی‌شود | ✅ (سطح قابل‌مشاهده) |
+| تست واحد سیاست retry | tests/renderer.test.ts | ۴ حالت retryRenderer + ۴ حالت chooseRenderer | ✅ |
+
+ابزار بازتولید: `scripts/make_boot_scenario_fixtures.mjs` (در فضای کاری ایجنت؛ چهار سناریو healthy/deadgpu/norenderer/glbootfail روی کپی dist).
+
 ## پروسیجر تست هر فاز (الگوی تکرار)
 
 1. `npm test` سبز → 2. `npm run build` بدون خطا → 3. `npm run preview` + agent-browser → 4. سناریوهای فاز در مرورگر واقعی → 5. اسکرین‌شات/لاگ به‌عنوان مدرک → 6. ثبت در این فایل و KNOWN_ISSUES.

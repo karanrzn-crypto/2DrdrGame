@@ -156,6 +156,29 @@ export function chooseRenderer(p: { webglDraws: boolean; canvas2dDraws: boolean 
   return 'none';
 }
 
+/**
+ * Pure boot-retry policy over *actual* Phaser boot outcomes, not just the
+ * probe (unit-tested in tests/renderer.test.ts).
+ *
+ * Why: Phaser's WebGLRenderer.init throws synchronously ('WebGL unsupported')
+ * when its own canvas.getContext('webgl') returns null or a lost context —
+ * a state the 4x4 probe cannot fully predict (the GPU process can die
+ * between the probe and the game boot, and Phaser's AUTO only falls back
+ * when its import-time Features flag was false). The boot sequence must
+ * therefore react to the failure itself: one honest retry on Canvas —
+ * a renderer the probe already proved (canvas2dDraws) — before giving up.
+ *
+ * attempt 0: the probe-based choice.
+ * attempt 1: only a failed AUTO (WebGL) boot may retry on Canvas; a Canvas
+ *            boot that already failed has nothing left to fall back to.
+ * attempt ≥ 2: no renderer remains → error panel.
+ */
+export function retryRenderer(initial: RendererChoice, attempt: number): RendererChoice | 'none' {
+  if (attempt <= 0) return initial;
+  if (attempt === 1 && initial === 'auto') return 'canvas';
+  return 'none';
+}
+
 /** Collect GL identity strings for the error panel / console diagnostics. */
 export function describeGL(): string {
   const gl = createProbeContext();
