@@ -43,11 +43,97 @@
       transition: opacity .6s ease;
     }
     #loading.hidden { opacity: 0; pointer-events: none; }
+    #boot-error {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #14100b;
+      z-index: 20;
+    }
+    #boot-error .panel {
+      max-width: 640px;
+      padding: 28px 36px;
+      border: 2px solid #6b5232;
+      border-radius: 10px;
+      background: #1c1710;
+      color: #c9a86a;
+      font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+      text-align: right;
+    }
+    #boot-error h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      color: #e0b97a;
+    }
+    #boot-error p { margin: 0 0 12px; font-size: 14px; line-height: 1.9; }
+    #boot-error pre {
+      margin: 0;
+      padding: 10px;
+      max-height: 160px;
+      overflow: auto;
+      border: 1px solid #3d3222;
+      border-radius: 6px;
+      background: #14100b;
+      color: #8f7a55;
+      font-size: 11px;
+      direction: ltr;
+      text-align: left;
+      white-space: pre-wrap;
+    }
   </style>
-  <script type="module" crossorigin src="./assets/index-DCFFJkS4.js"></script>
+  <script type="module" crossorigin src="./assets/index-YrtnuFv7.js"></script>
 </head>
 <body>
   <div id="game"></div>
   <div id="loading">در حال آماده‌سازی شهر…</div>
+  <div id="boot-error" dir="rtl" hidden>
+    <div class="panel">
+      <h2 id="boot-error-title">خطا در راه‌اندازی بازی</h2>
+      <p>متأسفانه «دروازهٔ مسی» نتوانست اجرا شود. رایج‌ترین علت، غیرفعال بودن شتاب‌دهی سخت‌افزاری مرورگر یا قدیمی بودن درایور گرافیک است.</p>
+      <p>راهکار: شتاب‌دهی سخت‌افزاری مرورگر را فعال کنید، مرورگر را با <b>Ctrl+Shift+R</b> تازه‌سازی کنید یا از نسخهٔ به‌روز کروم/فایرفاکس استفاده کنید.</p>
+      <pre id="boot-error-detail"></pre>
+    </div>
+  </div>
+  <script>
+    /* Early boot guard — runs before any module script so that even
+       module-evaluation failures (e.g. Phaser import-time code hitting a
+       broken canvas API) surface in the Persian error panel instead of a
+       silent blank screen. window.__cgReady is the single readiness flag
+       shared with src/boot/BootGuard.ts. The 12s fallback watchdog covers
+       the case where the JS bundle itself never loads/executes. */
+    (function () {
+      window.__cgReady = false;
+      function show(title, detail) {
+        var p = document.getElementById('boot-error');
+        if (!p) return;
+        var t = document.getElementById('boot-error-title');
+        var d = document.getElementById('boot-error-detail');
+        if (t) t.textContent = title;
+        if (d) d.textContent = detail;
+        p.hidden = false;
+        var l = document.getElementById('loading');
+        if (l) l.classList.add('hidden');
+      }
+      window.__cgShowBootError = show;
+      window.addEventListener('error', function (ev) {
+        if (window.__cgReady) return;
+        show('خطا در راه‌اندازی بازی', 'منبع خطا: window.onerror\n' + ev.message);
+      });
+      window.addEventListener('unhandledrejection', function (ev) {
+        if (window.__cgReady) return;
+        var r = ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason);
+        show('خطا در راه‌اندازی بازی', 'منبع خطا: unhandledrejection\n' + r);
+      });
+      window.setTimeout(function () {
+        if (window.__cgReady) return;
+        show(
+          'بازی بارگذاری نشد',
+          'فایل‌های بازی تا ۱۲ ثانیه اجرا نشدند. اتصال اینترنت را بررسی کنید و با Ctrl+Shift+R تازه‌سازی کنید (کش مرورگر).'
+        );
+      }, 12000);
+    })();
+  </script>
 </body>
 </html>
