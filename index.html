@@ -1,154 +1,49 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Coppergate — دروازهٔ مسی</title>
-  <style>
-    @font-face {
-      font-family: 'Vazirmatn';
-      src: url('./fonts/Vazirmatn-Regular.woff2') format('woff2');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: #14100b;
-      overflow: hidden;
-    }
-    #game {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #game canvas {
-      image-rendering: pixelated;
-      /* Field bug #7: Phaser left the canvas display:inline; in this RTL
-         page an inline canvas does not become a proper flex item and the
-         layout could push it below the viewport. display:block makes the
-         centering inside #game deterministic. */
-      display: block;
-    }
-    #loading {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #c9a86a;
-      font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
-      font-size: 22px;
-      letter-spacing: 1px;
-      background: #14100b;
-      z-index: 10;
-      transition: opacity .6s ease;
-    }
-    #loading.hidden { opacity: 0; pointer-events: none; }
-    #boot-error {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #14100b;
-      z-index: 20;
-    }
-    /* Author `display: flex` above would override the UA stylesheet rule
-       `[hidden] { display: none }` (author styles always win) — the panel
-       would then VISUALLY overlay the running game even with the hidden
-       attribute set and no error fired at all. This explicit rule makes
-       the hidden attribute effective again. */
-    #boot-error[hidden] { display: none; }
-    #boot-error .panel {
-      max-width: 640px;
-      padding: 28px 36px;
-      border: 2px solid #6b5232;
-      border-radius: 10px;
-      background: #1c1710;
-      color: #c9a86a;
-      font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
-      text-align: right;
-    }
-    #boot-error h2 {
-      margin: 0 0 12px;
-      font-size: 20px;
-      color: #e0b97a;
-    }
-    #boot-error p { margin: 0 0 12px; font-size: 14px; line-height: 1.9; }
-    #boot-error pre {
-      margin: 0;
-      padding: 10px;
-      max-height: 160px;
-      overflow: auto;
-      border: 1px solid #3d3222;
-      border-radius: 6px;
-      background: #14100b;
-      color: #8f7a55;
-      font-size: 11px;
-      direction: ltr;
-      text-align: left;
-      white-space: pre-wrap;
-    }
-  </style>
-  <script type="module" crossorigin src="./assets/index-BmmqKsS9.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>دروازهٔ مسی — Coppergate</title>
+<meta name="description" content="بازی وسترن دو‌بعدی در دنیای باز — شهر کوپرگیت">
+<link rel="stylesheet" href="./css/style.css">
+<script>
+/* گارد بوت زودهنگام: هر خطای ماژول به یک پنل فارسیِ قابل‌مشاهده می‌رسد. */
+window.__cgErrors = [];
+window.addEventListener('error', function (e) {
+  var msg = (e && (e.message || e.type)) ? String(e.message || e.type) : String(e);
+  window.__cgErrors.push(msg);
+  var p = document.getElementById('boot-error');
+  if (p && p.hidden) {
+    p.hidden = false;
+    var d = p.querySelector('.detail');
+    if (d) d.textContent = window.__cgErrors.join('\n');
+  }
+});
+window.addEventListener('unhandledrejection', function (e) {
+  var msg = e && e.reason ? String(e.reason && e.reason.message || e.reason) : 'promise rejection';
+  window.__cgErrors.push(msg);
+});
+</script>
 </head>
 <body>
-  <div id="game"></div>
-  <div id="loading">در حال آماده‌سازی شهر…</div>
-  <div id="boot-error" dir="rtl" hidden>
-    <div class="panel">
-      <h2 id="boot-error-title">خطا در راه‌اندازی بازی</h2>
-      <p>متأسفانه «دروازهٔ مسی» نتوانست اجرا شود. علت دقیق در جعبهٔ جزئیات (پایین) ثبت شده است.</p>
-      <p>یک راه ساده: صفحه را با <b>Ctrl+Shift+R</b> تازه‌سازی کنید یا از نسخهٔ به‌روز کروم/فایرفاکس استفاده کنید.</p>
-      <pre id="boot-error-detail"></pre>
-    </div>
+<div id="game"></div>
+
+<div id="loading">
+  <div class="box">
+    <div class="title">دروازهٔ مسی</div>
+    <div class="bar"><i></i></div>
+    <div class="msg">در حال آماده‌سازی شهر…</div>
   </div>
-  <script>
-    /* Early boot guard — runs before any module script so that even
-       module-evaluation failures (e.g. Phaser import-time code hitting a
-       broken canvas API) surface in the Persian error panel instead of a
-       silent blank screen. window.__cgReady is the single readiness flag
-       shared with src/boot/BootGuard.ts. The 12s fallback watchdog covers
-       the case where the JS bundle itself never loads/executes. */
-    (function () {
-      window.__cgReady = false;
-      function show(title, detail) {
-        var p = document.getElementById('boot-error');
-        if (!p) return;
-        var t = document.getElementById('boot-error-title');
-        var d = document.getElementById('boot-error-detail');
-        if (t) t.textContent = title;
-        if (d) d.textContent = detail;
-        p.hidden = false;
-        var l = document.getElementById('loading');
-        if (l) l.classList.add('hidden');
-      }
-      window.__cgShowBootError = show;
-      window.addEventListener('error', function (ev) {
-        if (window.__cgReady) return;
-        show('خطا در راه‌اندازی بازی', 'منبع خطا: window.onerror\n' + ev.message);
-      });
-      window.addEventListener('unhandledrejection', function (ev) {
-        if (window.__cgReady) return;
-        var r = ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason);
-        show('خطا در راه‌اندازی بازی', 'منبع خطا: unhandledrejection\n' + r);
-      });
-      window.setTimeout(function () {
-        if (window.__cgReady) return;
-        var p = document.getElementById('boot-error');
-        if (p && !p.hidden) return; // a real error panel is already visible — never overwrite it with the generic watchdog message
-        show(
-          'بازی بارگذاری نشد',
-          'فایل‌های بازی تا ۱۲ ثانیه اجرا نشدند. اتصال اینترنت را بررسی کنید و با Ctrl+Shift+R تازه‌سازی کنید (کش مرورگر).'
-        );
-      }, 12000);
-    })();
-  </script>
+</div>
+
+<div id="boot-error" hidden>
+  <div class="box">
+    <div class="title">خطا در راه‌اندازی بازی</div>
+    <p>متأسفانه «دروازهٔ مسی» نتوانست اجرا شود. لطفاً صفحه را دوباره بارگذاری کنید و اگر خطا تکرار شد از مرورگر به‌روزشده استفاده کنید.</p>
+    <pre class="detail"></pre>
+  </div>
+</div>
+
+<script type="module" src="./js/main.js"></script>
 </body>
 </html>
