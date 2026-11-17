@@ -21,3 +21,4 @@ npm-debug.log*
 *.pem
 *.key
 fixture-dist/
+gh-pages-wt/

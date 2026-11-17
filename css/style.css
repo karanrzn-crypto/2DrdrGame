@@ -1,0 +1,125 @@
+/* style.css — قاب بازی؛ صفحهٔ بارگذاری و پنل خطا با تم چرمی/کاغذی وسترن */
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./fonts/Vazirmatn-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ink: #2e2118;
+  --paper: #e8d8b0;
+  --paper-dark: #c9b183;
+  --strap: #5a3a24;
+  --bg: #171009;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+  font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+#game canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ---------- صفحهٔ بارگذاری ---------- */
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(120% 120% at 50% 30%, #2a1c10 0%, #171009 70%);
+  z-index: 20;
+}
+#loading.done { display: none; }
+
+#loading .box { text-align: center; }
+
+#loading .title {
+  color: var(--paper);
+  font-size: 34px;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 0 #000;
+  margin-bottom: 18px;
+}
+
+#loading .bar {
+  width: 220px;
+  height: 10px;
+  margin: 0 auto 12px;
+  background: #3a2a18;
+  border: 1px solid #171009;
+  box-shadow: inset 0 1px 0 #57402a;
+  overflow: hidden;
+}
+#loading .bar i {
+  display: block;
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg, #a8743e, #d8a35a);
+  animation: cg-load 1.1s ease-in-out infinite;
+}
+@keyframes cg-load {
+  0%   { transform: translateX(110%); }
+  100% { transform: translateX(-330%); }
+}
+
+#loading .msg { color: #b99e6f; font-size: 15px; }
+
+/* ---------- پنل خطا ---------- */
+#boot-error {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 3, 0.88);
+  z-index: 30;
+}
+#boot-error[hidden] { display: none; }
+
+#boot-error .box {
+  max-width: 520px;
+  width: min(92vw, 520px);
+  background: var(--paper);
+  border: 3px solid var(--strap);
+  box-shadow: 0 6px 0 rgba(0,0,0,.5);
+  padding: 18px 22px;
+  color: var(--ink);
+}
+#boot-error .title { font-size: 19px; margin-bottom: 8px; }
+#boot-error p { font-size: 14px; line-height: 1.9; margin: 0 0 10px; }
+#boot-error .detail {
+  font-size: 11px;
+  background: #d8c391;
+  border: 1px solid #a08a58;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow: auto;
+  direction: ltr;
+  text-align: left;
+}
