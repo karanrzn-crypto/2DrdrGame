@@ -724,9 +724,9 @@ World.buildAll = function (clear) {
   this.spawn.well = { x: 93 * T + T / 2, y: 58 * T }; this.addProp('well', 93 * T + 16, 60 * T, { v: 0 });
   this.addProp('gallows', 79 * T, 47 * T + 10, { v: 0 }); this.townGallows = { x: 79 * T, y: 47 * T + 10 };
   for (const x of [74, 86, 96, 105, 112]) this.addProp('lamp', x * T + 16, 50 * T + 6, { v: 0 });
-  for (const x of [76, 88, 100, 108]) this.addProp('lamp', x * T + 16, 54 * T + 24, { v: 0 });
-  for (const x of [77, 88, 101, 112]) this.addProp('hitch', x * T + 16, 50 * T + 26 - 10 + 6, { v: 0 });
-  this.addProp('trough', 99 * T, 55 * T + 8, { v: 0 }); this.addProp('barrel', 98 * T, 49 * T, { v: 0 }); this.addProp('crate', 100 * T, 49 * T + 4, { v: 0 }); this.addProp('barrel', 70 * T + 30, 54 * T + 8, { v: 0 });
+  for (const x of [78, 88, 95, 104]) this.addProp('lamp', x * T + 16, 54 * T + 24, { v: 0 });
+  for (const x of [77, 88, 101, 110]) this.addProp('hitch', x * T + 16, 50 * T + 26 - 10 + 6, { v: 0 });
+  this.addProp('trough', 113 * T, 55 * T + 8, { v: 0 }); this.addProp('barrel', 98 * T, 49 * T, { v: 0 }); this.addProp('crate', 100 * T, 49 * T + 4, { v: 0 }); this.addProp('barrel', 70 * T + 30, 54 * T + 8, { v: 0 });
   this.addProp('sign', 70 * T + 12, 50 * T + 16, { v: 0 }); this.addProp('sign', 116 * T + 16, 50 * T + 16, { v: 1 });
   this.addProp('wagon', 90 * T, 66 * T, { v: 0, s: 1 }); this.addProp('hay', 118 * T, 61 * T, { v: 0 }); this.addProp('hay', 118 * T + 20, 62 * T + 6, { v: 1 });
   this.addProp('expbarrel', 71 * T + 10, 64 * T + 6, { v: 0 }); this.addProp('barrel', 71 * T + 30, 64 * T + 8, { v: 0 });
@@ -752,11 +752,11 @@ World.buildAll = function (clear) {
   // bank
   { const b = this.townB.bank, r = this.inner(b); addCounter(r.x0 + 10, r.y0 + 56, 140, 12); this.addProp('safe', r.x1 - 22, r.y0 + 22, { v: 0 }); this.npcSpots.banker = { x: r.x0 + 80, y: r.y0 + 36 }; this.bankSafe = { x: r.x1 - 22, y: r.y0 + 22 }; }
   // doctor
-  { const b = this.townB.doctor, r = this.inner(b); addCounter(r.x0 + 10, r.y1 - 60, 90, 12); this.addProp('bed', r.x1 - 24, r.y0 + 40, { v: 1 }); addShelf(r.x0 + 6, r.y0 + 4, 130, 12); this.npcSpots.doctor = { x: r.x0 + 70, y: r.y1 - 36 }; }
+  { const b = this.townB.doctor, r = this.inner(b); addShelf(r.x0 + 6, r.y0 + 4, 42, 12); addShelf(r.x1 - 48, r.y0 + 4, 42, 12); addCounter(r.x0 + 10, r.y1 - 60, 90, 12); this.addProp('bed', r.x1 - 24, r.y0 + 40, { v: 1 }); this.npcSpots.doctor = { x: r.x0 + 70, y: r.y1 - 36 }; } // door is on the north wall: shelves must FLANK the doorway, never span it (v2.1 door-seal fix)
   // church
   { const b = this.townB.church, r = this.inner(b); this.addProp('altar', (r.x0 + r.x1) / 2, r.y0 + 20, { v: 0 }); for (let i = 0; i < 3; i++) { this.addProp('pew', r.x0 + 36, r.y0 + 70 + i * 36, { v: 0, s: 0.8 }); } this.npcSpots.priest = { x: (r.x0 + r.x1) / 2, y: r.y0 + 44 }; }
   // stable
-  { const b = this.townB.stable, r = this.inner(b); for (let i = 0; i < 3; i++) this.addProp('stall', r.x0 + 40 + i * 90, r.y0 + 14, { v: 0 }); this.addProp('hay', r.x1 - 30, r.y1 - 26, { v: 0 }); this.addProp('hay', r.x0 + 30, r.y1 - 26, { v: 1 }); this.npcSpots.stabler = { x: r.x0 + 140, y: r.y1 - 56 }; }
+  { const b = this.townB.stable, r = this.inner(b); for (let i = 0; i < 3; i++) this.addProp('stall', r.x0 + 40 + i * 90, r.y0 + 50, { v: 0 }); this.addProp('hay', r.x1 - 30, r.y1 - 26, { v: 0 }); this.addProp('hay', r.x0 + 30, r.y1 - 26, { v: 1 }); this.npcSpots.stabler = { x: r.x0 + 140, y: r.y1 - 56 }; }
   // houses
   for (const b of this.bld.filter((q) => q.type === 'house')) { const r = this.inner(b); this.addProp('bed', r.x1 - 20, r.y0 + 28, { v: 0 }); this.addProp('table', r.x0 + 36, r.y0 + 34, { v: 0 }); this.addProp('stove', r.x0 + 16, r.y1 - 20, { v: 0 }); }
 
@@ -768,7 +768,7 @@ World.buildAll = function (clear) {
     this.addProp('bed', r.x0 + 26, r.y0 + 40, { v: 0 }); this.addProp('table', r.x0 + 130, r.y0 + 50, { v: 0 }); this.addProp('stove', r.x1 - 24, r.y0 + 24, { v: 0 }); addShelf(r.x0 + 70, r.y0 + 4, 100, 12); this.spawn.bed = { x: r.x0 + 54, y: r.y0 + 70 }; this.npcSpots.odessa = { x: r.x0 + 110, y: r.y0 + 100 };
     const rb = this.inner(barn); this.addProp('hay', rb.x0 + 30, rb.y0 + 26, { v: 0 }); this.addProp('hay', rb.x1 - 30, rb.y0 + 26, { v: 1 }); this.addProp('crate', rb.x1 - 24, rb.y1 - 24, { v: 0 }); this.addProp('barrel', rb.x0 + 20, rb.y1 - 22, { v: 0 }); this.addProp('dynamite', rb.x0 + 70, rb.y0 + 22, { v: 0 });
     // corral
-    this.fence((rx + 2) * T, (ry + 10) * T, (rx + 20) * T, (ry + 18) * T, [{ side: 'N', at: (rx + 11) * T, w: 70 }]); this.spawn.corral = { x: (rx + 11) * T, y: (ry + 14) * T }; this.addProp('trough', (rx + 6) * T, (ry + 17) * T - 6, { v: 0 });
+    this.fence((rx + 2) * T, (ry + 10) * T, (rx + 20) * T, (ry + 18) * T, [{ side: 'N', at: (rx + 11) * T, w: 70 }, { side: 'N', at: (rx + 5) * T, w: 70 }, { side: 'N', at: (rx + 17.5) * T, w: 84 }]); this.spawn.corral = { x: (rx + 11) * T, y: (ry + 14) * T }; this.addProp('trough', (rx + 6) * T, (ry + 17) * T - 6, { v: 0 });
     this.addProp('windmill', (rx + 25) * T, (ry + 3) * T, { v: 0 }); this.addProp('well', (rx - 1) * T, (ry + 10) * T, { v: 0 }); this.addProp('scarecrow', (rx + 27) * T, (ry + 12) * T, { v: 0 });
     // crop field
     this.fillRect(rx + 24, ry + 8, rx + 36, ry + 16, K.FIELD); this.fence((rx + 23) * T, (ry + 7) * T, (rx + 37) * T + 8, (ry + 17) * T + 8, [{ side: 'W', at: (ry + 12) * T, w: 70 }]);
@@ -1567,39 +1567,142 @@ function drawHorse(x, h, t) {
 /* ---------------- animals ---------------- */
 function drawAnimal(x, an, t) {
   const sp = an.speciesDef, a = an.ang || 0, ph = an.gait || 0, mv = clamp((an.speed || 0) / 200, 0, 1); x.save(); x.translate(an.x, an.y); x.rotate(a);
-  const sw = Math.sin(ph) * (2 + mv * 4);
+  const sw = Math.sin(ph) * (2 + mv * 4), sw2 = Math.sin(ph + Math.PI) * (2 + mv * 4), id = an.id || 3;
+  /* volumetric top-down body: dark rim + base + back highlight + belly shade */
+  const body = (rx, ry, base, dark, lite) => { x.fillStyle = dark; Gx.ell(x, 0, 0, rx + 1.1, ry + 1.1); x.fill(); x.fillStyle = base; Gx.ell(x, 0, 0, rx, ry); x.fill(); x.fillStyle = lite; Gx.ell(x, -rx * 0.1, -ry * 0.32, rx * 0.82, ry * 0.52); x.fill(); x.fillStyle = dark; Gx.ell(x, rx * 0.06, ry * 0.52, rx * 0.8, ry * 0.4); x.fill(); };
+  /* jointed leg with dark lower + hoof; hy sign picks near/far side */
+  const limb = (hx, hy, s, len, w, coat, hoof) => { const dir = hy >= 0 ? 1 : -1, y0 = dir > 0 ? hy : hy - len;
+    x.fillStyle = coat; x.fillRect(hx + s * 0.35 - w / 2, y0, w, len * 0.62);
+    x.fillStyle = dk(coat, 0.3); x.fillRect(hx + s * 0.9 - w * 0.42, y0 + len * 0.55, w * 0.84, len * 0.27);
+    x.fillStyle = hoof; x.fillRect(hx + s * 1.02 - w * 0.42, y0 + len * 0.79, w * 0.84, len * 0.21); };
   if (an.species === 'deer') {
-    x.fillStyle = '#6a4a2c'; for (const [lx, ly, s] of [[7, -3, 1], [7, 3, -1], [-8, -3, -1], [-8, 3, 1]]) x.fillRect(lx + sw * s - 1, ly - 1, 4, 2);
-    x.fillStyle = '#a07040'; Gx.ell(x, 0, 0, 12, 5.6); x.fill(); x.fillStyle = '#c89a62'; Gx.ell(x, 1, -1.6, 9, 2.4); x.fill(); x.fillStyle = '#f0e8d8'; Gx.ell(x, -11, 0, 3, 2.6); x.fill();
-    x.fillStyle = '#a07040'; Gx.poly(x, [[8, -2.2], [15, -1.6], [15, 1.6], [8, 2.2]]); x.fill(); Gx.ell(x, 17, 0, 4.4, 2.8); x.fill(); x.fillStyle = '#3a2a1a'; Gx.ell(x, 21, 0, 1.4, 1.4); x.fill(); x.fillStyle = '#8a5a30'; Gx.ell(x, 14.5, -3, 2, 1.2, 0.4); x.fill(); Gx.ell(x, 14.5, 3, 2, 1.2, -0.4); x.fill();
-    if (an.male) { x.strokeStyle = '#e0d4b8'; x.lineWidth = 1.2; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(15.5, s * 2); x.lineTo(17, s * 6); x.lineTo(14.5, s * 9); x.moveTo(17, s * 6); x.lineTo(20, s * 8); x.stroke(); } }
+    const c1 = '#a87944', dark = '#7c5830', lite = '#c99d66', cream = '#eee2c8', hoof = '#231810';
+    limb(8.5, -4.8, sw, 8.5, 2.5, c1, hoof); limb(8.5, 4.8, sw2, 8.5, 2.5, c1, hoof);
+    limb(-8, -4.8, sw2, 8, 2.7, c1, hoof); limb(-8, 4.8, sw, 8, 2.7, c1, hoof);
+    body(12.5, 6.2, c1, dark, lite);
+    x.fillStyle = cream; Gx.ell(x, -10.2, 0, 3.5, 3.5); x.fill();
+    x.fillStyle = lite; for (const [px, py] of [[-3, -2.4], [1, 2.2], [5, -1.8], [-6, 2], [3, 3.4]]) { Gx.ell(x, px, py, 0.85, 0.7); x.fill(); }
+    x.fillStyle = cream; Gx.ell(x, -13.6, Math.sin(t * 7) * (an.state === 'flee' ? 1.8 : 0.4), 1.9, 2.6); x.fill();
+    x.fillStyle = dark; Gx.poly(x, [[8.5, -3], [16.5, -2.3], [16.5, 2.3], [8.5, 3]]); x.fill();
+    x.fillStyle = dark; Gx.ell(x, 17.2, 0, 5.3, 3.3); x.fill();
+    x.fillStyle = c1; Gx.ell(x, 17.7, 0, 4.6, 2.7); x.fill();
+    for (const s of [-1, 1]) { x.fillStyle = c1; Gx.ell(x, 15.4, s * 4.5, 3.2, 1.7, s * 0.55); x.fill(); x.fillStyle = cream; Gx.ell(x, 15.7, s * 4.3, 1.9, 0.9, s * 0.55); x.fill(); }
+    if (an.male) { x.strokeStyle = '#ecdfc0'; x.lineWidth = 1.6; x.lineCap = 'round'; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(14.8, s * 2.2); x.quadraticCurveTo(17.2, s * 6.2, 15.4, s * 10); x.stroke(); x.beginPath(); x.moveTo(16.6, s * 4.9); x.lineTo(20.2, s * 7.2); x.moveTo(15.9, s * 7.7); x.lineTo(18.6, s * 10.7); x.stroke(); } }
+    x.fillStyle = hoof; Gx.ell(x, 21, 0, 1.25, 1.05); x.fill();
+    x.fillStyle = '#1c1410'; Gx.ell(x, 17.9, -2.2, 0.85, 0.85); x.fill(); Gx.ell(x, 17.9, 2.2, 0.85, 0.85); x.fill();
+    x.fillStyle = 'rgba(255,255,255,0.7)'; x.fillRect(17.6, -2.5, 0.6, 0.6); x.fillRect(17.6, 1.9, 0.6, 0.6);
   } else if (an.species === 'rabbit') {
-    const hop = Math.abs(Math.sin(ph * 1.6)) * mv * 3; x.fillStyle = '#9a8a74'; Gx.ell(x, 0, 0, 5.2, 3.6); x.fill(); Gx.ell(x, 5, 0, 3, 2.6); x.fill(); x.fillStyle = '#7a6a56'; Gx.ell(x, 5.4, -1.6, 2.6, 0.9, 0.2); x.fill(); Gx.ell(x, 5.4, 1.6, 2.6, 0.9, -0.2); x.fill(); x.fillStyle = '#f0ece4'; Gx.ell(x, -5.4, 0, 1.8, 1.8); x.fill(); x.fillStyle = '#7a6a56'; x.fillRect(-3 + hop * 0.2, -3, 4, 1.4); x.fillRect(-3, 1.8, 4, 1.4);
+    const hop = Math.abs(Math.sin(ph * 1.6)) * mv * 3.4, c1 = '#a5947c', dark = '#75675a', lite = '#cabc9f', back = mv * 0.6;
+    x.fillStyle = dark; Gx.ell(x, 3.4, 0, 5, 3.7); x.fill();
+    x.fillStyle = c1; Gx.ell(x, 3.4, 0, 4.5, 3.3); x.fill();
+    x.fillStyle = lite; Gx.ell(x, 3.4, -1, 3.5, 1.5); x.fill();
+    for (const s of [-1, 1]) { x.save(); x.translate(2.4, s * 2.4); x.rotate(s * (0.5 - back)); x.fillStyle = c1; Gx.ell(x, 1.8, 0, 4.2, 1.7); x.fill(); x.fillStyle = '#d9a8a2'; Gx.ell(x, 2, 0, 2.8, 0.95); x.fill(); x.restore(); }
+    x.fillStyle = '#f6f1e6'; Gx.ell(x, -7.4, 0, 2.4, 2.4); x.fill();
+    x.fillStyle = dark; Gx.ell(x, -1.4, -hop * 0.14, 7, 5); x.fill();
+    x.fillStyle = c1; Gx.ell(x, -1.4, -hop * 0.14, 6.5, 4.5); x.fill();
+    x.fillStyle = lite; Gx.ell(x, -2.2, -1.9 - hop * 0.14, 4.6, 2.2); x.fill();
+    x.fillStyle = dark; x.fillRect(-4.6 + hop * 0.5, -4.4, 4, 1.4); x.fillRect(-4.6, 3, 4, 1.4);
+    x.fillStyle = '#1c1410'; Gx.ell(x, 4.8, -1.3, 0.85, 0.85); x.fill(); Gx.ell(x, 4.8, 1.3, 0.85, 0.85); x.fill();
+    x.fillStyle = '#5a4a3a'; x.fillRect(7.2, -0.6, 1.2, 1.2);
   } else if (an.species === 'coyote' || an.species === 'wolf') {
-    const w = an.species === 'wolf'; const c1 = w ? '#6a6e74' : '#a08458', c2 = w ? '#9aa0a8' : '#c8ae82', k = w ? 1.18 : 1;
-    x.scale(k, k); x.fillStyle = dk(c1, 0.3); for (const [lx, ly, s] of [[6, -3, 1], [6, 3, -1], [-6, -3, -1], [-6, 3, 1]]) x.fillRect(lx + sw * s - 1, ly - 1, 4, 2);
-    x.strokeStyle = c1; x.lineWidth = 3.4; x.lineCap = 'round'; x.beginPath(); x.moveTo(-10, 0); x.quadraticCurveTo(-15, Math.sin(t * 4) * 2, -19, Math.sin(t * 4 + 1) * 3 + (an.state === 'hunt' ? 0 : 2)); x.stroke(); x.strokeStyle = dk(c1, 0.35); x.lineWidth = 1.4; x.beginPath(); x.moveTo(-18, 0); x.lineTo(-19.5, 2.4); x.stroke();
-    x.fillStyle = c1; Gx.ell(x, 0, 0, 11, 4.6); x.fill(); x.fillStyle = c2; Gx.ell(x, 1, 1.2, 8, 2); x.fill(); Gx.poly(x, [[8, -2], [14, -1.4], [14, 1.4], [8, 2]]); x.fill(); x.fillStyle = c1; Gx.ell(x, 12, 0, 4.6, 3); x.fill(); x.fillStyle = c2; Gx.ell(x, 15.4, 0, 2.2, 1.6); x.fill(); x.fillStyle = '#1a1a1a'; Gx.ell(x, 17.4, 0, 1, 1); x.fill(); x.fillStyle = dk(c1, 0.3); Gx.poly(x, [[10, -2.6], [12, -4.8], [13, -2.4]]); x.fill(); Gx.poly(x, [[10, 2.6], [12, 4.8], [13, 2.4]]); x.fill();
-    if (an.state === 'hunt') { x.fillStyle = '#e8c040'; x.fillRect(13.4, -1.8, 1, 0.9); x.fillRect(13.4, 0.9, 1, 0.9); }
+    const w = an.species === 'wolf', k = w ? 1.18 : 1; x.scale(k, k);
+    const c1 = w ? '#6d7178' : '#a8895c', dark = w ? '#474b52' : '#7c6540', lite = w ? '#9aa0a8' : '#cbaf84', paw = '#241a12';
+    limb(6.5, -4.4, sw, 7.5, 2.7, c1, paw); limb(6.5, 4.4, sw2, 7.5, 2.7, c1, paw);
+    limb(-6.5, -4.4, sw2, 7, 2.9, c1, paw); limb(-6.5, 4.4, sw, 7, 2.9, c1, paw);
+    const tw = Math.sin(t * 4 + 1) * 3 + (an.state === 'hunt' ? 0 : 2);
+    x.strokeStyle = c1; x.lineWidth = 4.4; x.lineCap = 'round'; x.beginPath(); x.moveTo(-9.5, 0); x.quadraticCurveTo(-14, Math.sin(t * 4) * 2, -18, tw); x.stroke();
+    x.fillStyle = dark; Gx.ell(x, -18.3, tw, 2.5, 3.1); x.fill();
+    body(11, 5, c1, dark, lite);
+    if (an.state === 'hunt') { x.fillStyle = dark; for (const s of [-1, 1]) for (let i = -1; i <= 1; i++) { Gx.poly(x, [[i * 3.4 - 1.3, s * 3.4], [i * 3.4, s * 5.4], [i * 3.4 + 1.3, s * 3.4]]); x.fill(); } }
+    x.fillStyle = lite; Gx.ell(x, 8.2, 0.6, 2.6, 3); x.fill();
+    x.fillStyle = dark; Gx.poly(x, [[8, -2.3], [14.6, -1.6], [14.6, 1.6], [8, 2.3]]); x.fill();
+    x.fillStyle = c1; Gx.poly(x, [[8.8, -1.7], [14.6, -1.2], [14.6, 1.2], [8.8, 1.7]]); x.fill();
+    x.fillStyle = dark; Gx.ell(x, 12.3, 0, 5, 3.3); x.fill();
+    x.fillStyle = c1; Gx.ell(x, 12.8, 0, 4.3, 2.7); x.fill();
+    x.fillStyle = lite; Gx.ell(x, 13.2, 0.9, 3.2, 1.2); x.fill();
+    x.fillStyle = '#16181a'; Gx.ell(x, 16.6, 0, 1.2, 1.05); x.fill();
+    for (const s of [-1, 1]) { x.fillStyle = c1; Gx.poly(x, [[9.5, s * 2.7], [11.6, s * 5.6], [12.9, s * 2.5]]); x.fill(); x.fillStyle = dark; Gx.poly(x, [[10.4, s * 3.1], [11.5, s * 4.8], [12.2, s * 3]]); x.fill(); }
+    if (an.state === 'hunt') { x.fillStyle = '#e8c040'; Gx.ell(x, 13.7, -1.8, 1.05, 0.85); x.fill(); Gx.ell(x, 13.7, 1.8, 1.05, 0.85); x.fill(); x.fillStyle = '#141414'; x.fillRect(13.7, -2, 0.5, 0.5); x.fillRect(13.7, 1.6, 0.5, 0.5); }
+    else { x.fillStyle = '#1a1a1a'; Gx.ell(x, 13.7, -1.7, 0.85, 0.75); x.fill(); Gx.ell(x, 13.7, 1.7, 0.85, 0.75); x.fill(); }
   } else if (an.species === 'cow') {
-    x.fillStyle = '#3a2a1a'; for (const [lx, ly, s] of [[9, -5, 1], [9, 5, -1], [-9, -5, -1], [-9, 5, 1]]) x.fillRect(lx + sw * s * 0.6 - 1.5, ly - 1.5, 4.4, 3);
-    x.fillStyle = an.coat === 1 ? '#6a4a30' : '#e8e2d2'; Gx.ell(x, 0, 0, 16, 9); x.fill(); if (an.coat !== 1) { x.fillStyle = '#3a2e26'; Gx.blob(x, -3, -2, 5.4, 8, mulberry32(an.id || 3), 0.3); x.fill(); Gx.blob(x, 6, 3, 4, 8, mulberry32((an.id || 3) + 5), 0.3); x.fill(); }
-    x.fillStyle = an.coat === 1 ? '#7a5a40' : '#d8d2c2'; Gx.ell(x, 17, 0, 6, 4.6); x.fill(); x.fillStyle = '#d0a8a0'; Gx.ell(x, 21.6, 0, 2.4, 2.8); x.fill(); x.strokeStyle = '#eee'; x.lineWidth = 1.6; x.beginPath(); x.moveTo(16, -4); x.lineTo(17.4, -8); x.moveTo(16, 4); x.lineTo(17.4, 8); x.stroke(); x.strokeStyle = '#3a2e26'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(-15, 0); x.quadraticCurveTo(-20, Math.sin(t * 2) * 3, -21, 3); x.stroke();
+    const base = an.coat === 1 ? '#7a5636' : '#ece5d4', dark = an.coat === 1 ? '#54381f' : '#c6bba1', lite = an.coat === 1 ? '#97724c' : '#fbf7ec', hoof = '#241a12';
+    limb(9, -6.8, sw, 7, 3.4, base, hoof); limb(9, 6.8, sw2, 7, 3.4, base, hoof);
+    limb(-9, -6.8, sw2, 6.5, 3.6, base, hoof); limb(-9, 6.8, sw, 6.5, 3.6, base, hoof);
+    x.fillStyle = '#e2b3ac'; Gx.ell(x, -5.5, 5.4, 3.6, 2.3); x.fill();
+    body(16, 8.8, base, dark, lite);
+    if (an.coat === 1) { x.fillStyle = '#4a3422'; Gx.blob(x, -3, -2, 5.4, 8, mulberry32(id), 0.3); x.fill(); Gx.blob(x, 6, 3.2, 3.6, 7, mulberry32(id + 5), 0.3); x.fill(); }
+    else { x.fillStyle = '#39302a'; Gx.blob(x, -4, -2.5, 6.2, 9, mulberry32(id), 0.35); x.fill(); Gx.blob(x, 6, 3, 4.2, 8, mulberry32(id + 5), 0.35); x.fill(); }
+    const ts = Math.sin(t * 2 + id) * 3;
+    x.strokeStyle = an.coat === 1 ? '#4a3422' : '#d9d2c0'; x.lineWidth = 1.8; x.lineCap = 'round'; x.beginPath(); x.moveTo(-15, 0); x.quadraticCurveTo(-19, ts * 0.8, -21.5, ts + 2); x.stroke();
+    x.fillStyle = '#241a12'; Gx.ell(x, -21.6, ts + 2, 1.7, 2.3); x.fill();
+    x.fillStyle = dark; Gx.ell(x, 17, 0, 7.3, 5.5); x.fill();
+    x.fillStyle = an.coat === 1 ? '#8a6540' : '#f4efe2'; Gx.ell(x, 17.4, 0, 6.5, 4.8); x.fill();
+    x.fillStyle = lt(an.coat === 1 ? '#8a6540' : '#f4efe2', 0.3); Gx.ell(x, 17.4, -1.6, 5.4, 2.2); x.fill();
+    x.fillStyle = an.coat === 1 ? '#54381f' : '#39302a'; Gx.ell(x, 15.9, -1.9, 2.6, 1.5, -0.2); x.fill(); /* forelock patch */
+    const flick = Math.sin(t * 1.6 + id * 2) > 0.88 ? 0.55 : 0;
+    for (const s of [-1, 1]) { x.fillStyle = base; Gx.ell(x, 15.3, s * 5.4, 3.1, 1.8, s * (0.5 + flick)); x.fill(); x.fillStyle = '#c98f88'; Gx.ell(x, 15.6, s * 5.1, 1.8, 0.95, s * (0.5 + flick)); x.fill(); }
+    x.strokeStyle = '#e8d8b4'; x.lineWidth = 2; x.lineCap = 'round'; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(14.4, s * 3.2); x.quadraticCurveTo(15.8, s * 6.8, 18.2, s * 8.1); x.stroke(); }
+    x.fillStyle = '#d9c2ae'; Gx.ell(x, 22, 0, 3.1, 3.3); x.fill();
+    x.fillStyle = '#a8786c'; Gx.ell(x, 23.3, -1.15, 0.85, 1.05); x.fill(); Gx.ell(x, 23.3, 1.15, 0.85, 1.05); x.fill();
+    x.fillStyle = '#1c1410'; Gx.ell(x, 18.7, -2.9, 1, 1); x.fill(); Gx.ell(x, 18.7, 2.9, 1, 1); x.fill();
+    x.fillStyle = 'rgba(255,255,255,0.75)'; x.fillRect(18.3, -3.3, 0.65, 0.65); x.fillRect(18.3, 2.5, 0.65, 0.65);
   } else if (an.species === 'bear') {
-    x.scale(1.25, 1.25); x.fillStyle = '#2a1e16'; for (const [lx, ly, s] of [[7, -6, 1], [7, 6, -1], [-8, -6, -1], [-8, 6, 1]]) Gx.ell(x, lx + sw * s * 0.5, ly, 4.4, 3), x.fill();
-    x.fillStyle = '#4a3220'; Gx.ell(x, 0, 0, 14, 9); x.fill(); x.fillStyle = '#5c4430'; Gx.ell(x, 2, -2, 10, 4); x.fill(); x.fillStyle = '#4a3220'; Gx.ell(x, 13, 0, 6, 5.4); x.fill(); x.fillStyle = '#7a5a40'; Gx.ell(x, 17.6, 0, 3, 2.4); x.fill(); x.fillStyle = '#1a1a1a'; Gx.ell(x, 19.6, 0, 1.2, 1.2); x.fill(); x.fillStyle = '#3a2618'; Gx.ell(x, 11, -4.6, 2, 2); x.fill(); Gx.ell(x, 11, 4.6, 2, 2); x.fill();
+    const c1 = '#4d3421', dark = '#33220f', lite = '#6a4c32', claw = '#1a110a'; x.scale(1.25, 1.25);
+    limb(7.5, -7.4, sw * 0.55, 5.6, 4.6, c1, claw); limb(7.5, 7.4, sw2 * 0.55, 5.6, 4.6, c1, claw);
+    limb(-8, -7.4, sw2 * 0.55, 5.2, 4.9, c1, claw); limb(-8, 7.4, sw * 0.55, 5.2, 4.9, c1, claw);
+    body(14.5, 9, c1, dark, lite);
+    x.fillStyle = lite; Gx.ell(x, 6.4, -0.6, 5.4, 5.2); x.fill();
+    x.fillStyle = dark; Gx.ell(x, -12.8, 0, 3.4, 3); x.fill();
+    x.fillStyle = dark; for (let i = -3; i <= 3; i++) { Gx.poly(x, [[i * 3.7 - 1.7, 7.4], [i * 3.7, 10], [i * 3.7 + 1.7, 7.4]]); x.fill(); }
+    x.fillStyle = dark; Gx.ell(x, 13.4, 0, 6.9, 5.9); x.fill();
+    x.fillStyle = c1; Gx.ell(x, 13.7, 0, 6.1, 5.2); x.fill();
+    x.fillStyle = lite; Gx.ell(x, 13.7, -1.7, 4.9, 2.2); x.fill();
+    x.fillStyle = lite; Gx.ell(x, 18.3, 0, 3.5, 2.6); x.fill();
+    x.fillStyle = claw; Gx.ell(x, 20.9, 0, 1.5, 1.3); x.fill();
+    for (const s of [-1, 1]) { x.fillStyle = dark; Gx.ell(x, 11.3, s * 5.6, 2.3, 1.9, s * 0.3); x.fill(); x.fillStyle = '#6e5138'; Gx.ell(x, 11.3, s * 5.4, 1.3, 1, s * 0.3); x.fill(); }
+    x.fillStyle = '#15100a'; Gx.ell(x, 14.5, -2.7, 0.9, 0.8); x.fill(); Gx.ell(x, 14.5, 2.7, 0.9, 0.8); x.fill();
+    x.strokeStyle = '#ded4c2'; x.lineWidth = 0.75; for (const s of [-1, 1]) for (let c = 0; c < 3; c++) { x.beginPath(); x.moveTo(7.8 + c * 1.2, s * 11.4); x.lineTo(8.7 + c * 1.2, s * 13); x.stroke(); x.beginPath(); x.moveTo(-8.8 + c * 1.2, s * 11.2); x.lineTo(-7.9 + c * 1.2, s * 12.8); x.stroke(); }
   } else if (an.species === 'rattler') {
-    x.strokeStyle = '#7a6a3a'; x.lineWidth = 3; x.lineCap = 'round'; x.beginPath(); for (let i = 0; i <= 12; i++) { const px = -i * 2.2 + 12, py = Math.sin(i * 0.8 + t * (2 + mv * 8)) * 3; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); x.strokeStyle = '#4a3e20'; x.lineWidth = 1; x.beginPath(); for (let i = 0; i <= 12; i += 2) { const px = -i * 2.2 + 12, py = Math.sin(i * 0.8 + t * (2 + mv * 8)) * 3; x.moveTo(px, py - 1.4); x.lineTo(px, py + 1.4); } x.stroke(); x.fillStyle = '#7a6a3a'; Gx.ell(x, 13, 0, 3, 2.2); x.fill(); x.fillStyle = '#d8b030'; x.fillRect(13.6, -1, 1, 0.8);
+    const wav = t * (2.2 + mv * 9), segs = 13;
+    for (let i = segs; i >= 0; i--) {
+      const px = 13.2 - i * 2.4, py = Math.sin(i * 0.75 + wav) * (2.6 + mv * 1.6), r = 2.7 - i * 0.12;
+      x.fillStyle = '#453a1e'; Gx.ell(x, px, py, r + 0.7, r * 0.8 + 0.6); x.fill();
+      x.fillStyle = i % 2 ? '#59502c' : '#8a7a48'; Gx.ell(x, px, py - r * 0.15, r, r * 0.78); x.fill();
+    }
+    const lx = 13.2 - segs * 2.4, ly2 = Math.sin(segs * 0.75 + wav) * (2.6 + mv * 1.6);
+    const rattle = mv < 0.06 && an.state !== 'flee' ? Math.sin(t * 16) * 0.8 : 0.25;
+    x.fillStyle = '#d9d0b8'; for (let i = 0; i < 3; i++) { Gx.ell(x, lx - 1.6 - i * 2, ly2 + rattle * (i ? 1 : 0.3), 1.5 - i * 0.3, 1.2 - i * 0.24); x.fill(); }
+    x.fillStyle = '#453a1e'; Gx.poly(x, [[12.8, -3.8], [19.8, -2.7], [19.8, 2.7], [12.8, 3.8]]); x.fill();
+    x.fillStyle = '#7c6c3d'; Gx.poly(x, [[13.4, -3], [19.2, -2.1], [19.2, 2.1], [13.4, 3]]); x.fill();
+    x.fillStyle = '#59502c'; Gx.ell(x, 16.4, -1.4, 1.5, 1.1); x.fill(); Gx.ell(x, 16.4, 1.4, 1.5, 1.1); x.fill();
+    x.fillStyle = '#e8c040'; Gx.ell(x, 15.9, -1.9, 0.8, 0.7); x.fill(); Gx.ell(x, 15.9, 1.9, 0.8, 0.7); x.fill();
+    x.fillStyle = '#141414'; x.fillRect(15.9, -2.1, 0.45, 0.45); x.fillRect(15.9, 1.7, 0.45, 0.45);
+    if (Math.sin(t * 2.6 + id) > 0.55) { x.strokeStyle = '#c04545'; x.lineWidth = 0.7; x.beginPath(); x.moveTo(19.6, 0); x.lineTo(21.7, -1); x.moveTo(21.7, -1); x.lineTo(22.8, -0.5); x.moveTo(21.7, -1); x.lineTo(22.8, -1.6); x.stroke(); }
   }
   if (an.hurt > 0) { x.fillStyle = `rgba(255,70,50,${clamp(an.hurt, 0, 0.5)})`; Gx.ell(x, 0, 0, 12, 8); x.fill(); }
   x.restore();
 }
 function drawCarcass(x, an) {
-  x.save(); x.translate(an.x, an.y); x.rotate(an.deadAng || 0); x.globalAlpha = an.skinned ? 0.85 : 1; x.fillStyle = 'rgba(100,10,10,0.5)'; Gx.ell(x, 2, 2, 14, 8); x.fill();
+  x.save(); x.translate(an.x, an.y); x.rotate(an.deadAng || 0); x.globalAlpha = an.skinned ? 0.92 : 1;
   const sc = { deer: 1.1, rabbit: 0.8, coyote: 1.0, wolf: 1.1, cow: 1.2, bear: 1.2, rattler: 0.9 }[an.species] || 1; x.scale(sc, sc);
-  const col = { deer: '#a07040', rabbit: '#9a8a74', coyote: '#a08458', wolf: '#6a6e74', cow: '#e0dac8', bear: '#4a3220', rattler: '#7a6a3a' }[an.species];
-  if (an.skinned) { x.fillStyle = '#b86a6a'; Gx.ell(x, 0, 0, 10, 5); x.fill(); x.fillStyle = '#e8d8d0'; x.fillRect(-6, -1, 12, 1.2); x.restore(); return; }
-  x.fillStyle = col; Gx.ell(x, 0, 0, 11, 5.4); x.fill(); Gx.ell(x, 12, 1.5, 4, 2.6); x.fill(); x.fillStyle = dk(col, 0.25); x.fillRect(5, -7, 3, 4); x.fillRect(-9, 4, 3, 4); x.fillRect(-9, -7, 3, 3);
+  const col = { deer: '#a87944', rabbit: '#9d8d75', coyote: '#a8895c', wolf: '#6d7178', cow: '#ece5d4', bear: '#4d3421', rattler: '#7c6c3d' }[an.species] || '#9a8a74';
+  x.fillStyle = 'rgba(100,10,10,0.5)'; Gx.ell(x, 2, 3, 15, 9); x.fill(); // blood pool
+  if (an.skinned) {
+    x.fillStyle = '#8a3a34'; Gx.ell(x, 0, 0, 12, 6.2); x.fill();
+    x.fillStyle = '#b86a6a'; Gx.ell(x, 0, -0.8, 10.6, 4.8); x.fill();
+    x.strokeStyle = '#e8d0c0'; x.lineWidth = 1; for (let i = -2; i <= 2; i++) { x.beginPath(); x.moveTo(i * 3.7, -3.6); x.quadraticCurveTo(i * 3.7 + 1.3, 0, i * 3.7, 3.2); x.stroke(); } // ribs
+    x.fillStyle = '#e8d8d0'; x.fillRect(-6.6, -1, 13.2, 1.4); // membrane
+    x.restore(); return;
+  }
+  x.fillStyle = dk(col, 0.45); Gx.ell(x, 0, 0, 12, 6.2); x.fill();
+  x.fillStyle = col; Gx.ell(x, 0, -0.9, 11, 5.4); x.fill();
+  x.fillStyle = lt(col, 0.18); Gx.ell(x, -1.5, -1.9, 8, 3); x.fill();
+  x.fillStyle = dk(col, 0.15); Gx.ell(x, 11.6, 1.2, 4.6, 3.1); x.fill(); // head
+  x.fillStyle = col; Gx.ell(x, 11.9, 1.2, 4, 2.6); x.fill();
+  x.fillStyle = dk(col, 0.3); Gx.ell(x, 10.6, -1.7, 1.9, 1, -0.6); x.fill(); // ear
+  x.strokeStyle = dk(col, 0.25); x.lineWidth = 2.2; x.lineCap = 'round'; // bent legs
+  x.beginPath(); x.moveTo(5.6, -4.6); x.lineTo(7.4, -8.2); x.lineTo(5.4, -9.6); x.stroke();
+  x.beginPath(); x.moveTo(-7.2, -4.4); x.lineTo(-9.2, -7.8); x.lineTo(-7, -9.4); x.stroke();
   x.restore();
 }
 
