@@ -19,6 +19,10 @@ export interface DayVisual {
   alpha: number;
   /** 0 = full day, 1 = deep night (drives lanterns, windows, firelight). */
   night: number;
+  /** 0..1 strength of the warm low-sun wash rising in the EAST. */
+  dawn: number;
+  /** 0..1 strength of the warm low-sun wash sinking in the WEST. */
+  dusk: number;
 }
 
 function hex(color: string): number {
@@ -44,6 +48,8 @@ interface GradeKey {
   color: string;
   alpha: number;
   night: number;
+  /** Warm low-sun wash strength (east at dawn, west at dusk). */
+  sun?: number;
 }
 
 /**
@@ -53,16 +59,16 @@ interface GradeKey {
 const TRACK: GradeKey[] = [
   { m: 0,    color: PAL.gradeNight,     alpha: 0.62, night: 1.0 },
   { m: 260,  color: PAL.gradeNight,     alpha: 0.62, night: 1.0 },
-  { m: 300,  color: PAL.gradePreDawn,   alpha: 0.42, night: 0.9 },
-  { m: 340,  color: PAL.gradeDawn,      alpha: 0.30, night: 0.55 },
-  { m: 395,  color: PAL.gradeSunrise,   alpha: 0.20, night: 0.12 },
-  { m: 450,  color: PAL.gradeMorning,   alpha: 0.08, night: 0.0 },
+  { m: 300,  color: PAL.gradePreDawn,   alpha: 0.42, night: 0.9,  sun: 0.1 },
+  { m: 340,  color: PAL.gradeDawn,      alpha: 0.30, night: 0.55, sun: 0.45 },
+  { m: 395,  color: PAL.gradeSunrise,   alpha: 0.20, night: 0.12, sun: 1.0 },
+  { m: 450,  color: PAL.gradeMorning,   alpha: 0.08, night: 0.0,  sun: 0.25 },
   { m: 720,  color: PAL.gradeNoon,      alpha: 0.03, night: 0.0 },
   { m: 900,  color: PAL.gradeAfternoon, alpha: 0.07, night: 0.0 },
-  { m: 1005, color: PAL.gradeGolden,    alpha: 0.15, night: 0.04 },
-  { m: 1055, color: PAL.gradeSunset,    alpha: 0.27, night: 0.22 },
-  { m: 1105, color: PAL.gradeDusk,      alpha: 0.36, night: 0.6 },
-  { m: 1155, color: PAL.gradeTwilight,  alpha: 0.50, night: 0.88 },
+  { m: 1005, color: PAL.gradeGolden,    alpha: 0.15, night: 0.04, sun: 0.75 },
+  { m: 1055, color: PAL.gradeSunset,    alpha: 0.27, night: 0.22, sun: 1.0 },
+  { m: 1105, color: PAL.gradeDusk,      alpha: 0.36, night: 0.6,  sun: 0.4 },
+  { m: 1155, color: PAL.gradeTwilight,  alpha: 0.50, night: 0.88, sun: 0.1 },
   { m: 1215, color: PAL.gradeNight,     alpha: 0.62, night: 1.0 },
   { m: 1440, color: PAL.gradeNight,     alpha: 0.62, night: 1.0 },
 ];
@@ -79,6 +85,8 @@ export function dayVisual(minutes: number): DayVisual {
     tint: lerpColor(hex(a.color), hex(b.color), t),
     alpha: lerp(a.alpha, b.alpha, t),
     night: lerp(a.night, b.night, t),
+    dawn: lerp(a.sun ?? 0, b.sun ?? 0, t),
+    dusk: lerp(a.sun ?? 0, b.sun ?? 0, t),
   };
 }
 

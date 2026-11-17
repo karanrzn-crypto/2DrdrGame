@@ -32,15 +32,15 @@ export class Player {
     this.sprite = scene.physics.add.sprite(x, y, 'char-eli').setOrigin(0.5, 1);
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     // Small feet-level collision box; the head may overlap building tops.
-    body.setSize(10, 7);
-    body.setOffset(3, 15);
+    body.setSize(10, 8);
+    body.setOffset(4, 18);
     body.setCollideWorldBounds(true);
     body.setAcceleration(0, 0);
     body.setDrag(GAME.drag, GAME.drag);
     body.setMaxVelocity(GAME.walkSpeed, GAME.walkSpeed);
 
     this.shadow = scene.add.image(x, y, 'shadow').setAlpha(0.4);
-    // Start on the first frame (16x22) instead of the whole sheet.
+    // Start on the first frame (18x26) instead of the whole sheet.
     this.sprite.setFrame('0');
 
     this.keys = scene.input.keyboard!.addKeys(

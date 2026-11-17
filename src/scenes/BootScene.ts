@@ -10,6 +10,7 @@ import {
   ELI_LOOK, PETE_LOOK, TRAVELER_LOOK,
 } from '../assets/CharFactory';
 import { buildAllProps } from '../assets/PropFactory';
+import { buildAllUI } from '../ui/UIArt';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -25,6 +26,7 @@ export class BootScene extends Phaser.Scene {
     createCharAnims(this, 'char-pete');
     createCharAnims(this, 'char-traveler');
     buildAllProps(this);
+    buildAllUI(this);
 
     const start = (): void => {
       document.getElementById('loading')?.classList.add('hidden');

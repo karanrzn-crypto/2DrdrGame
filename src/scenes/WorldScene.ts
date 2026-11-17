@@ -1,11 +1,14 @@
 /**
  * WorldScene.ts — builds the world from MapData and owns the simulation +
  * presentation loop: player, NPCs, interactions, and the full atmosphere
- * system (continuous day-cycle grading, night light pools, chimney smoke,
- * cloud shadows, pond shimmer, wind sway, weather, vignette).
+ * system (continuous day-cycle grading, golden-hour sun wash, night light
+ * pools, chimney smoke, cloud shadows, pond shimmer, wind sway, weather,
+ * vignette).
  *
+ * v3 rebuild: the visible ground is ONE hand-painted canvas (GroundPainter)
+ * — the tilemap layers are kept only for collision and rendered hidden.
  * Lighting derives from TimeSystem via Atmosphere.dayVisual every frame;
- * this scene never owns the clock (master directive §56).
+ * this scene never owns the clock.
  */
 import Phaser from 'phaser';
 import { GAME, SCENES } from '../config/GameConfig';
@@ -13,7 +16,7 @@ import { events, EV } from '../core/EventBus';
 import { TimeSystem } from '../core/TimeSystem';
 import { buildMap } from '../world/MapData';
 import { TILE_SHEET_KEY, TILE_SIZE } from '../assets/TileFactory';
-import { WATER_TILES } from '../assets/TileIds';
+import { GROUND_KEY, paintGround } from '../assets/GroundPainter';
 import { PROPS } from '../assets/PropFactory';
 import { BUILDINGS, LightAnchor } from '../assets/Buildings';
 import { PAL } from '../assets/Palette';
@@ -47,10 +50,9 @@ export class WorldScene extends Phaser.Scene {
   private overlay!: Phaser.GameObjects.Rectangle;
   private hazeRect!: Phaser.GameObjects.Rectangle;
   private darkenRect!: Phaser.GameObjects.Rectangle;
+  private sunWash!: Phaser.GameObjects.Image;
   private clouds: Array<{ img: Phaser.GameObjects.Image; speed: number }> = [];
-  private waterTiles: Array<{ tile: Phaser.Tilemaps.Tile; alt: number }> = [];
-  private waterTimer = 0;
-  private waterPhase = 0;
+  private shimmers: Phaser.GameObjects.Image[] = [];
   private rainEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
   private dustEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
   private rainOn = false;
@@ -78,31 +80,20 @@ export class WorldScene extends Phaser.Scene {
     const worldW = map.w * TILE_SIZE;
     const worldH = map.h * TILE_SIZE;
 
-    // --- tile layers (visual + collision from the same data) ---------------
+    // --- physics layers (collision only — visuals are the painted canvas) ---
     const groundMap = this.make.tilemap({ data: map.ground, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
     const obstacleMap = this.make.tilemap({ data: map.obstacles, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
     const tsGround = groundMap.addTilesetImage(TILE_SHEET_KEY, TILE_SHEET_KEY, TILE_SIZE, TILE_SIZE, 0, 0, 0)!;
     const tsObst = obstacleMap.addTilesetImage(TILE_SHEET_KEY, TILE_SHEET_KEY, TILE_SIZE, TILE_SIZE, 0, 0, 0)!;
     const groundLayer = groundMap.createLayer(0, tsGround, 0, 0)!;
-    groundLayer.setDepth(-100);
+    groundLayer.setVisible(false);
     const obstacleLayer = obstacleMap.createLayer(0, tsObst, 0, 0)!;
+    obstacleLayer.setVisible(false);
     obstacleLayer.setCollision(map.colliderTiles);
 
-    // collect pond tiles for the shimmer animation
-    for (let y = 0; y < map.h; y++) {
-      for (let x = 0; x < map.w; x++) {
-        const idx = map.ground[y][x];
-        if (WATER_TILES.includes(idx)) {
-          const tile = groundLayer.getTileAt(x, y);
-          if (tile) {
-            this.waterTiles.push({
-              tile,
-              alt: WATER_TILES[1 - WATER_TILES.indexOf(idx)],
-            });
-          }
-        }
-      }
-    }
+    // --- the hand-painted world ground (one canvas, zero tile grid) ---------
+    paintGround(this, map);
+    this.add.image(0, 0, GROUND_KEY).setOrigin(0, 0).setDepth(-100);
 
     this.physics.world.setBounds(0, 0, worldW, worldH);
 
@@ -115,23 +106,24 @@ export class WorldScene extends Phaser.Scene {
       const baseX = spawn.tx * TILE_SIZE + spec.w / 2;
       const baseY = spawn.ty * TILE_SIZE + spec.h;
 
-      // soft ground shadow under anything big enough to cast one
-      if (spec.bodyW >= 8) {
-        this.add.image(baseX, baseY - 1, 'shadow')
-          .setOrigin(0.5, 1)
-          .setScale(Math.max(1, (spec.bodyW + 6) / 13), 1.6)
-          .setAlpha(art ? 0.42 : 0.3)
-          .setDepth(baseY - 1);
-      }
-
       const img = spec.anim
         ? this.add.sprite(baseX, baseY, spec.key).setOrigin(0.5, 1)
         : this.add.image(baseX, baseY, spec.key).setOrigin(0.5, 1);
       img.setDepth(baseY);
+      if (spawn.flip) img.setFlipX(true);
       if (spec.anim) {
         (img as Phaser.GameObjects.Sprite).setFrame('0').play(spec.anim.key);
         // critters face varied directions so herds don't look cloned
         if (spawn.type === 'sheep') img.setFlipX((spawn.tx + spawn.ty) % 2 === 0);
+      }
+
+      // spinning layer (windmill blades — rendered behind the tower)
+      if (spec.spinner) {
+        const blades = this.add.sprite(
+          baseX + spec.spinner.dx, baseY + spec.spinner.dy, spec.spinner.key,
+        ).setOrigin(0.5, 0.5);
+        blades.setDepth(baseY - 0.6);
+        blades.play(spec.spinner.anim);
       }
 
       // wind sway — gentle rotation around the base
@@ -166,7 +158,7 @@ export class WorldScene extends Phaser.Scene {
             baseY + (a.y - spec.h),
             texKey,
           ).setOrigin(0.5, 0.5)
-            .setScale((a.r * 2) / 92)
+            .setScale((a.r * 2) / 112)
             .setBlendMode(Phaser.BlendModes.ADD)
             .setAlpha(0)
             .setDepth(820); // above the grade overlay — light punches through night
@@ -174,7 +166,7 @@ export class WorldScene extends Phaser.Scene {
             img: glow,
             flicker: a.flicker ?? 0.05,
             seed: (a.x * 7 + a.y * 13) % 100,
-            base: 0.82,
+            base: 0.55,
           });
         }
       }
@@ -201,8 +193,8 @@ export class WorldScene extends Phaser.Scene {
 
       if (spawn.signText) {
         const isSignPost = spawn.type === 'sign';
-        const ty = isSignPost ? baseY - 16 : baseY - spec.h + (spec.signDy ?? 13);
-        const fontSize = isSignPost ? '7px' : '11px';
+        const ty = isSignPost ? baseY - 19 : baseY - spec.h + (spec.signDy ?? 13);
+        const fontSize = isSignPost ? '8px' : '11px';
         this.add.text(baseX, ty, spawn.signText, {
           fontFamily: 'Vazirmatn, Tahoma, Arial',
           fontSize,
@@ -222,6 +214,28 @@ export class WorldScene extends Phaser.Scene {
           dialogue: spawn.dialogue,
         });
       }
+    }
+
+    // --- pond shimmer (additive streaks drifting over the water) -------------
+    const pond = map.plan.pond;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.7;
+      const rr = 0.6 + ((i * 37) % 35) / 100;
+      const sx = pond.cx + Math.cos(a) * pond.rx * rr;
+      const sy = pond.cy + Math.sin(a) * pond.ry * rr;
+      const s = this.add.image(sx, sy, 'shimmer')
+        .setDepth(sy + 0.4)
+        .setAlpha(0.0);
+      this.shimmers.push(s);
+      this.tweens.add({
+        targets: s,
+        alpha: { from: 0.12, to: 0.6 },
+        duration: 1500 + (i * 173) % 1100,
+        delay: (i * 291) % 1600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     }
 
     // --- NPCs ---------------------------------------------------------------
@@ -263,18 +277,22 @@ export class WorldScene extends Phaser.Scene {
     // cool darkening while raining
     this.darkenRect = this.add.rectangle(0, 0, GAME.width, GAME.height, hexNum(PAL.gradeRain))
       .setOrigin(0).setScrollFactor(0).setDepth(810).setAlpha(0);
+    // golden-hour sun wash (low warm sun from the horizon side)
+    this.sunWash = this.add.image(0, 0, 'sunwash')
+      .setOrigin(0).setDisplaySize(GAME.width, GAME.height)
+      .setScrollFactor(0).setDepth(815).setAlpha(0);
     // cinematic vignette
     this.add.image(0, 0, 'vignette')
       .setOrigin(0).setDisplaySize(GAME.width, GAME.height)
       .setScrollFactor(0).setDepth(850).setAlpha(0.9);
 
     // drifting cloud shadows across the world
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       const cx = 120 + i * 260 + (i * 97) % 140;
       const cy = 60 + ((i * 173) % 380);
       const img = this.add.image(cx, cy, 'cloud')
         .setScale(1.5 + (i % 3) * 0.5)
-        .setAlpha(0.13 + (i % 2) * 0.04)
+        .setAlpha(0.12 + (i % 2) * 0.04)
         .setDepth(645);
       this.clouds.push({ img, speed: 4 + (i % 3) * 2.5 });
     }
@@ -373,11 +391,16 @@ export class WorldScene extends Phaser.Scene {
     const dt = Math.min(delta, 50);
     this.elapsed += dt;
 
-    // World clock — clamped delta (directive §16).
+    // World clock — clamped delta.
     this.timeSys.advance(dt / 1000);
     const visual = dayVisual(this.timeSys.minutes);
     this.overlay.fillColor = visual.tint;
     this.overlay.setAlpha(visual.alpha);
+
+    // golden-hour sun wash: from the east at dawn, the west at dusk
+    const golden = Math.max(visual.dawn, visual.dusk);
+    this.sunWash.setFlipX(visual.dusk > visual.dawn);
+    this.sunWash.setAlpha(golden * 0.55);
 
     // night lights with per-light flicker
     for (const light of this.nightLights) {
@@ -410,17 +433,7 @@ export class WorldScene extends Phaser.Scene {
     // drifting cloud shadows
     for (const cloud of this.clouds) {
       cloud.img.x += cloud.speed * (dt / 1000);
-      if (cloud.img.x > 64 * TILE_SIZE + 180) cloud.img.x = -180;
-    }
-
-    // pond shimmer — swap water frames on a third of the tiles
-    this.waterTimer += dt;
-    if (this.waterTimer > 700) {
-      this.waterTimer = 0;
-      this.waterPhase = 1 - this.waterPhase;
-      for (const { tile, alt } of this.waterTiles) {
-        if ((tile.x + tile.y) % 3 === this.waterPhase) tile.index = alt;
-      }
+      if (cloud.img.x > 64 * TILE_SIZE + 200) cloud.img.x = -200;
     }
 
     // tumbleweed rolling through the badlands

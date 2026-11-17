@@ -87,3 +87,11 @@ npm test   # ۲۸ تست، همه سبز
 ## پروسیجر تست هر فاز (الگوی تکرار)
 
 1. `npm test` سبز → 2. `npm run build` بدون خطا → 3. `npm run preview` + agent-browser → 4. سناریوهای فاز در مرورگر واقعی → 5. اسکرین‌شات/لاگ به‌عنوان مدرک → 6. ثبت در این فایل و KNOWN_ISSUES.
+
+
+## QA بازسازی بصری v3
+
+- `scripts/qa_screens.cjs` — ۱۲ اسکرین‌شات از موقعیت‌ها/ساعت‌ها/آب‌وهواهای مختلف روی بیلد پروداکشن (Chromium headless + خواندن بوم).
+- `scripts/gameplay_smoke.cjs` — ورودی واقعی کیبورد: حرکت، برخورد با آب، تعامل و دیالوگ، مکث/ادامه؛ همه PASS.
+- `scripts/baseline_before.cjs` — اسکرین‌شات‌های «قبل» برای مقایسه؛ جدول مقایسه: `docs/screenshots/v3/comparison-before-after.png`.
+- `tests/ground.test.ts` — قطعیت نویز و سازگاری نقشهٔ زمین/برخورد.

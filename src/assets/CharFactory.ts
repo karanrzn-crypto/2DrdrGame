@@ -1,18 +1,19 @@
 /**
- * CharFactory.ts — original humanoid pixel sprites (16x22, 4 directions,
+ * CharFactory.ts — original humanoid pixel sprites (18x26, 4 directions,
  * 6 frames per direction: 2 idle + 4 walk). One parametric draw function
  * generates the player AND every NPC from a CharLook, so all characters
- * share one consistent style (master directive §5).
+ * share one consistent style.
  *
- * v2 visual overhaul: wardrobe system — coats, vests, neckerchiefs, hip
- * holsters, belt buckles and wider brimmed hats. The silhouettes stay 16x22
- * so movement code and animation frames are untouched.
+ * v3 rebuild: bigger, readable silhouettes (18x26 vs 16x22), a full ink
+ * outline around every frame so characters pop from the painted ground,
+ * wide-brim hats with three tones, duster coats with swinging tails,
+ * waistcoats, neckerchiefs, gun belts with holsters and beards.
  */
 import Phaser from 'phaser';
 import { PAL } from './Palette';
 import { makeCanvasTexture, PixelPen } from './PixelPen';
 
-export const CHAR = { FW: 16, FH: 22, COLS: 6, ROWS: 4 } as const;
+export const CHAR = { FW: 18, FH: 26, COLS: 6, ROWS: 4 } as const;
 
 /** Direction row order in the sheet. */
 export const DIR = { DOWN: 0, LEFT: 1, RIGHT: 2, UP: 3 } as const;
@@ -29,57 +30,55 @@ export interface CharLook {
   hat?: string;
   hatDark?: string;
   beard?: string;
-  /** Duster / poncho worn over the shirt (side tails + shoulders). */
   coat?: string;
   coatShade?: string;
-  /** Waistcoat worn over the shirt. */
   vest?: string;
   vestShade?: string;
-  /** Neckerchief / bandana at the collar. */
   scarf?: string;
-  /** Gun belt with holster on the right hip. */
   holster?: boolean;
-  /** When set, the character wears a skirt (no separate legs). */
   skirt?: string;
 }
 
 function drawHead(pen: PixelPen, ox: number, oy: number, dir: number, look: CharLook): void {
   const ink = PAL.outline;
-  // back hair / face per direction
-  pen.rect(ox + 5, oy + 3, 6, 6, look.skin);
+  // face block
+  pen.rect(ox + 6, oy + 3, 7, 7, look.skin);
   if (dir === DIR.UP) {
-    pen.rect(ox + 5, oy + 3, 6, 6, look.hair); // back of the head
-    pen.rect(ox + 6, oy + 8, 4, 1, look.skin);
+    pen.rect(ox + 6, oy + 3, 7, 7, look.hair); // back of the head
+    pen.rect(ox + 7, oy + 9, 5, 1, look.skin);
   } else if (dir === DIR.DOWN) {
-    pen.rect(ox + 5, oy + 3, 6, 2, look.hair);       // hair top
-    pen.px(ox + 5, oy + 5, look.hair);
-    pen.px(ox + 10, oy + 5, look.hair);
-    pen.px(ox + 6, oy + 6, ink);                      // eyes
-    pen.px(ox + 9, oy + 6, ink);
-    pen.rect(ox + 7, oy + 8, 2, 1, look.skinShade);   // mouth hint
+    pen.rect(ox + 6, oy + 3, 7, 2, look.hair);        // hair top
+    pen.px(ox + 6, oy + 5, look.hair);
+    pen.px(ox + 12, oy + 5, look.hair);
+    pen.px(ox + 8, oy + 6, ink);                       // eyes
+    pen.px(ox + 11, oy + 6, ink);
+    pen.rect(ox + 9, oy + 9, 3, 1, look.skinShade);    // mouth hint
   } else {
-    // left / right profile
     const flip = dir === DIR.RIGHT;
-    const hx = flip ? 6 : 5;                          // face front edge
-    pen.rect(ox + 5, oy + 3, 6, 2, look.hair);        // hair top
-    pen.rect(ox + (flip ? 8 : 5), oy + 5, 3, 4, look.hair); // back hair
-    pen.px(ox + (flip ? 9 : 6), oy + 6, ink);         // one eye
-    pen.px(ox + (flip ? 5 : 10), oy + 7, look.skinShade); // nose shade
-    pen.px(ox + hx, oy + 5, look.skin);               // face front
+    pen.rect(ox + 6, oy + 3, 7, 2, look.hair);         // hair top
+    pen.rect(ox + (flip ? 9 : 6), oy + 5, 4, 5, look.hair); // back hair
+    pen.px(ox + (flip ? 10 : 8), oy + 6, ink);         // one eye
+    pen.px(ox + (flip ? 6 : 13), oy + 7, look.skinShade); // nose shade
+    pen.rect(ox + (flip ? 11 : 6), oy + 5, 2, 3, look.skin); // face front
   }
   if (look.beard) {
-    pen.rect(ox + 5, oy + 8, 6, 2, look.beard);
-    pen.px(ox + 7, oy + 10, look.beard);
-    pen.px(ox + 8, oy + 10, look.beard);
+    pen.rect(ox + 6, oy + 9, 7, 3, look.beard);
+    pen.px(ox + 8, oy + 12, look.beard);
+    pen.px(ox + 10, oy + 12, look.beard);
   }
   if (look.hat) {
     const hd = look.hatDark ?? PAL.hatDark;
-    pen.rect(ox + 3, oy + 2, 10, 1, look.hat);        // wide brim
-    pen.rect(ox + 3, oy + 3, 10, 1, hd);              // brim underside
-    pen.rect(ox + 6, oy, 4, 2, look.hat);             // crown
-    pen.rect(ox + 6, oy + 1, 4, 1, hd);               // crown band
-    pen.px(ox + 6, oy + 2, hd);                       // brim crease
-    pen.px(ox + 9, oy + 2, hd);
+    // wide brim: top surface + dark underside
+    pen.rect(ox + 3, oy + 2, 13, 1, look.hat);
+    pen.rect(ox + 3, oy + 3, 13, 2, hd);
+    pen.px(ox + 3, oy + 2, look.hat);
+    pen.px(ox + 15, oy + 2, look.hat);
+    // crown with a crease and band
+    pen.rect(ox + 7, oy - 2, 5, 4, look.hat);
+    pen.rect(ox + 7, oy + 1, 5, 1, hd);
+    pen.rect(ox + 9, oy - 2, 1, 4, hd); // crease
+    pen.px(ox + 7, oy - 2, look.hat);
+    pen.px(ox + 11, oy - 2, look.hat);
   }
 }
 
@@ -92,76 +91,76 @@ function drawFrame(
   const bob = frame === 1 || wf === 1 || wf === 3 ? 1 : 0;
   const top = oy + bob;                               // upper body offset
 
-  // legs (skirt characters skip)
+  // legs
   if (look.skirt) {
-    pen.rect(ox + 5, oy + 14, 6, 4, look.skirt);
-    pen.rect(ox + 4, oy + 17, 8, 3, look.skirt);
-    pen.rect(ox + 4, oy + 20, 8, 1, look.boots);
-    pen.rect(ox + 6, oy + 21, 4, 1, ink);
+    pen.rect(ox + 6, oy + 16, 7, 5, look.skirt);
+    pen.rect(ox + 5, oy + 19, 9, 3, look.skirt);
+    pen.rect(ox + 5, oy + 22, 9, 1, look.boots);
+    pen.rect(ox + 7, oy + 24, 5, 1, ink);
   } else {
     if (walk && (wf === 0 || wf === 2)) {
       const leftFwd = wf === 0;
-      // forward leg (long), trailing leg (bent up)
-      pen.rect(ox + (leftFwd ? 6 : 9), oy + 16, 2, 6, look.pants);
-      pen.rect(ox + (leftFwd ? 6 : 9), oy + 21, 2, 1, look.boots);
-      pen.rect(ox + (leftFwd ? 9 : 6), oy + 16, 2, 3, look.pants);
-      pen.rect(ox + (leftFwd ? 9 : 6), oy + 19, 2, 1, look.boots);
+      pen.rect(ox + (leftFwd ? 7 : 11), oy + 18, 2, 7, look.pants);
+      pen.rect(ox + (leftFwd ? 7 : 11), oy + 24, 2, 1, look.boots);
+      pen.rect(ox + (leftFwd ? 11 : 7), oy + 18, 2, 4, look.pants);
+      pen.rect(ox + (leftFwd ? 11 : 7), oy + 21, 2, 1, look.boots);
     } else {
-      pen.rect(ox + 6, oy + 16, 2, 6, look.pants);
-      pen.rect(ox + 9, oy + 16, 2, 6, look.pants);
-      pen.rect(ox + 6, oy + 21, 2, 1, look.boots);
-      pen.rect(ox + 9, oy + 21, 2, 1, look.boots);
+      pen.rect(ox + 7, oy + 18, 2, 7, look.pants);
+      pen.rect(ox + 11, oy + 18, 2, 7, look.pants);
+      pen.rect(ox + 7, oy + 24, 2, 1, look.boots);
+      pen.rect(ox + 11, oy + 24, 2, 1, look.boots);
     }
   }
 
   // torso
-  pen.rect(ox + 5, top + 9, 6, 7, look.shirt);
-  pen.rect(ox + 5, top + 14, 6, 2, look.shirtShade);
+  pen.rect(ox + 6, top + 11, 7, 8, look.shirt);
+  pen.rect(ox + 6, top + 16, 7, 3, look.shirtShade);
 
   // vest over the shirt
   if (look.vest) {
     const vestShade = look.vestShade ?? look.boots;
-    pen.rect(ox + 5, top + 9, 6, 5, look.vest);
-    pen.rect(ox + 5, top + 9, 1, 5, vestShade);
-    pen.rect(ox + 10, top + 9, 1, 5, vestShade);
-    pen.rect(ox + 7, top + 9, 2, 5, look.shirt); // shirt strip between lapels
+    pen.rect(ox + 6, top + 11, 7, 6, look.vest);
+    pen.rect(ox + 6, top + 11, 1, 6, vestShade);
+    pen.rect(ox + 12, top + 11, 1, 6, vestShade);
+    pen.rect(ox + 9, top + 11, 2, 6, look.shirt); // shirt strip between lapels
   }
 
-  // coat: shoulders + side tails (swing subtly while walking)
+  // coat: shoulders + side tails (swing while walking)
   if (look.coat) {
     const coatShade = look.coatShade ?? look.coat;
     const swing = walk ? (wf === 0 ? 1 : wf === 2 ? 0 : 0) : 0;
-    pen.rect(ox + 5, top + 9, 6, 1, look.coat);       // shoulder line
-    pen.rect(ox + 4, top + 10, 1, 6 + swing, look.coat);  // left tail
-    pen.rect(ox + 11, top + 10, 1, 6 + (1 - swing), look.coat); // right tail
-    pen.px(ox + 4, top + 15 + swing, coatShade);
-    pen.px(ox + 11, top + 15 + (1 - swing), coatShade);
+    pen.rect(ox + 6, top + 11, 7, 1, look.coat);
+    pen.rect(ox + 5, top + 12, 1, 7 + swing, look.coat);
+    pen.rect(ox + 13, top + 12, 1, 7 + (1 - swing), look.coat);
+    pen.px(ox + 5, top + 19 + swing, coatShade);
+    pen.px(ox + 13, top + 19 + (1 - swing), coatShade);
+    pen.rect(ox + 6, top + 18, 7, 1, coatShade); // coat hem
   }
 
   // belt + buckle + holster
-  pen.rect(ox + 5, top + 15, 6, 1, look.boots);       // belt
+  pen.rect(ox + 6, top + 17, 7, 1, look.boots);
   if (look.holster) {
-    pen.px(ox + 8, top + 15, PAL.brass);              // buckle
-    pen.rect(ox + 10, top + 16, 2, 3, ink);           // holster on the right hip
-    pen.rect(ox + 10, top + 13, 1, 3, ink);           // strap
+    pen.px(ox + 9, top + 17, PAL.brass);
+    pen.rect(ox + 12, top + 18, 2, 4, ink);
+    pen.rect(ox + 12, top + 15, 1, 3, ink);
   }
 
   // arms (swing while walking)
   const armSwing = walk ? (wf === 0 ? -1 : wf === 2 ? 1 : 0) : 0;
   const armCol = look.coat ?? look.shirt;
-  pen.rect(ox + 4, top + 10 + armSwing, 1, 4, armCol);
-  pen.rect(ox + 11, top + 10 - armSwing, 1, 4, armCol);
+  pen.rect(ox + 5, top + 12 + armSwing, 1, 5, armCol);
+  pen.rect(ox + 13, top + 12 - armSwing, 1, 5, armCol);
   if (look.vest) {
-    pen.rect(ox + 4, top + 10 + armSwing, 1, 2, look.vest); // sleeve hint
-    pen.rect(ox + 11, top + 10 - armSwing, 1, 2, look.vest);
+    pen.rect(ox + 5, top + 12 + armSwing, 1, 2, look.vest);
+    pen.rect(ox + 13, top + 12 - armSwing, 1, 2, look.vest);
   }
-  pen.px(ox + 4, top + 14 + armSwing, look.skin);     // hands
-  pen.px(ox + 11, top + 14 - armSwing, look.skin);
+  pen.px(ox + 5, top + 16 + armSwing, look.skin);
+  pen.px(ox + 13, top + 16 - armSwing, look.skin);
 
   // neckerchief
   if (look.scarf) {
-    pen.rect(ox + 6, top + 9, 4, 1, look.scarf);
-    pen.px(ox + 7, top + 10, look.scarf);             // tail
+    pen.rect(ox + 7, top + 11, 5, 1, look.scarf);
+    pen.px(ox + 9, top + 12, look.scarf);
   }
 
   // head + hat
@@ -170,8 +169,7 @@ function drawFrame(
 
 /**
  * Build one character sheet: 4 rows (directions) x 6 columns
- * (idle0, idle1, walk0..3). Canvas textures only expose __BASE by default,
- * so we also register numbered frames (0..23) for generateFrameNumbers.
+ * (idle0, idle1, walk0..3), then wrap every frame in the ink outline.
  */
 export function buildCharSheet(scene: Phaser.Scene, key: string, look: CharLook): void {
   const { pen, refresh } = makeCanvasTexture(scene, key, CHAR.COLS * CHAR.FW, CHAR.ROWS * CHAR.FH);
@@ -182,9 +180,9 @@ export function buildCharSheet(scene: Phaser.Scene, key: string, look: CharLook)
       drawFrame(pen, ox, oy, dir, f, look);
     }
   }
+  pen.outline(PAL.outline);
   refresh();
 
-  // Register each cell as a numbered frame so animations can slice the sheet.
   const tex = scene.textures.get(key);
   for (let i = 0; i < CHAR.COLS * CHAR.ROWS; i++) {
     if (tex.has(i.toString())) continue;

@@ -40,8 +40,8 @@ export class Npc {
     this.walkAnimKey = sheetKey;
     this.sprite = scene.physics.add.sprite(x, y, sheetKey).setOrigin(0.5, 1);
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
-    body.setSize(10, 7);
-    body.setOffset(3, 15);
+    body.setSize(10, 8);
+    body.setOffset(4, 18);
     body.setCollideWorldBounds(true);
     body.setDrag(400, 400);
     this.shadow = scene.add.image(x, y, 'shadow').setAlpha(0.35);
