@@ -25,7 +25,7 @@ if (status) {
 try {
   sh('git fetch origin gh-pages');
   try {
-    sh('git worktree add gh-pages-wt origin/gh-pages');
+    sh('git worktree add gh-pages-wt FETCH_HEAD');
   } catch {
     // worktree از قبل وجود دارد
   }
