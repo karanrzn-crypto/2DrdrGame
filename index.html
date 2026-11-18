@@ -199,7 +199,7 @@ select{font-family:var(--font);padding:2px 8px;background:#e6d4a4;border:2px sol
 /* ============================================================
    DUSTY HOLLOW — core: constants, math, input, save, sound
    ============================================================ */
-const TILE = 32, MW = 320, MH = 232, WW = MW * TILE, WH = MH * TILE; // v3 frontier: 4.4x the old valley (10240 x 7424 px)
+const TILE = 32, MW = 150, MH = 110, WW = MW * TILE, WH = MH * TILE;
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -428,10 +428,7 @@ const KSPEED = [1, 1, 1, 0.96, 1, 0, 0.62, 1.12, 1.04, 1, 1, 1, 0.9, 0.98, 0.78,
 
 /* prop catalogue: col = [x0,y0,x1,y1] relative to base point; bb = blocks bullets & sight */
 const PROP = {
-  /* tree trunk collisions stay narrow — the canopy is NOT solid (horse must slide past trunks) */
-  pine: { col: [-4, -2, 4, 4], bb: 1 }, oak: { col: [-5, -2, 5, 5], bb: 1 }, dead: { col: [-3, -2, 3, 3], bb: 1 },
-  pine2: { col: [-5, -2, 5, 4], bb: 1 }, cottonwood: { col: [-6, -2, 6, 5], bb: 1 }, juniper: { col: [-4, -2, 4, 4], bb: 1 },
-  sage: { col: null }, yucca: { col: [-4, -3, 4, 4], bb: 0 }, reed: { col: null }, grasstuft: { col: null }, track: { col: null },
+  pine: { col: [-5, -3, 5, 5], bb: 1 }, oak: { col: [-6, -3, 6, 5], bb: 1 }, dead: { col: [-4, -3, 4, 4], bb: 1 },
   cactus: { col: [-5, -4, 5, 5], bb: 0 }, saguaro: { col: [-6, -4, 6, 5], bb: 0 },
   rock1: { col: [-9, -7, 9, 8], bb: 1 }, rock2: { col: [-16, -12, 16, 12], bb: 1 }, rock3: { col: [-7, -5, 7, 6], bb: 1 },
   bush: { col: null }, tumble: { col: null }, flower: { col: null }, stump: { col: [-6, -4, 6, 5], bb: 0 }, log: { col: [-16, -5, 16, 6], bb: 0 },
@@ -461,15 +458,6 @@ const POI = {
   cabin: { x: 66, y: 98, r: 7, name: 'کلبه‌ی معدنچی' },
   camp: { x: 46, y: 74, r: 5, name: 'اردوگاه شخصی' },
   bridge: { x: 59, y: 57, r: 4, name: 'پل رودخانه' },
-  /* --- v3 frontier lands --- */
-  lake: { x: 49, y: 35, r: 8, name: 'دریاچه‌ی کاج' },
-  trapper: { x: 64, y: 12, r: 8, name: 'کلبه‌ی تله‌گذار' },
-  westbad: { x: 13, y: 88, r: 9, name: 'بادلند غربی' },
-  outpost: { x: 170, y: 44, r: 12, name: 'پست تجاری ردگیت' },
-  redmesa: { x: 258, y: 54, r: 14, name: 'میسای سرخ' },
-  drylake: { x: 205, y: 132, r: 12, name: 'کف دریاچه‌ی خشک' },
-  skeleton: { x: 243, y: 186, r: 12, name: 'دره‌ی اسکلت' },
-  wildhorses: { x: 66, y: 180, r: 12, name: 'چمنزار اسب‌های وحشی' },
 };
 const RAIL_Y = 84;
 const riverX = (y) => 58 + 7 * Math.sin(y / 13 + 1) + 3 * Math.sin(y / 5.3);
@@ -504,15 +492,12 @@ const World = {
     this.props.push(p);
     let box = null;
     if (d.rect && o.w) box = { x0: x - o.w / 2, y0: y - o.h / 2, x1: x + o.w / 2, y1: y + o.h / 2 };
-    else if (d.col) { const c = d.col; const s = TRUNK.has(type) ? 1 + (p.s - 1) * 0.35 : p.s; box = { x0: x + c[0] * s, y0: y + c[1] * s, x1: x + c[2] * s, y1: y + c[3] * s }; }
+    else if (d.col) { const c = d.col, s = p.s; box = { x0: x + c[0] * s, y0: y + c[1] * s, x1: x + c[2] * s, y1: y + c[3] * s }; }
     if (o.nocol) box = null;
     if (box) { box.bb = d.bb === undefined ? 1 : d.bb; box.prop = p; p.box = box; this.addCol(box); }
     return p;
   },
   destroyProp(p) { p.dead = true; if (p.box) this.removeCol(p.box); },
-
-  /* trees whose collision is the trunk only — size scaling must not seal passages */
-  /* (TRUNK set defined right after the World object literal) */
 
   /* ---------- collision (circle vs world) ---------- */
   pushCircleBox(o, b) {
@@ -524,7 +509,7 @@ const World = {
   },
   collide(o, ignoreProps) {
     let hit = false;
-    for (let it = 0; it < 3; it++) {
+    for (let it = 0; it < 2; it++) {
       const tx0 = Math.floor((o.x - o.r) / TILE), tx1 = Math.floor((o.x + o.r) / TILE), ty0 = Math.floor((o.y - o.r) / TILE), ty1 = Math.floor((o.y + o.r) / TILE);
       for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) if (this.solidT(tx, ty)) { if (this.pushCircleBox(o, { x0: tx * TILE, y0: ty * TILE, x1: tx * TILE + TILE, y1: ty * TILE + TILE })) hit = true; }
       if (!ignoreProps) for (const c of this.colsNear(o.x - o.r, o.y - o.r, o.x + o.r, o.y + o.r)) { if (c.pass && c.pass(o)) continue; if (this.pushCircleBox(o, c)) hit = true; }
@@ -612,9 +597,6 @@ const World = {
   },
 };
 
-/* trunk-only tree collision set (used by addProp to damp size scaling of tree boxes) */
-const TRUNK = new Set(['pine', 'pine2', 'oak', 'cottonwood', 'juniper', 'dead']);
-
 /* ============================================================
    GENERATION
    ============================================================ */
@@ -622,38 +604,21 @@ World.gen = function () {
   const S = this.seed; Math.__orig = Math.__orig || Math.random; Math.random = mulberry32(S); // deterministic world; restored at the end
   const rng = Math.random;
   this.kind.fill(0); this.props.length = 0; this.bld.length = 0; this.zones.length = 0; this.hash.clear(); this.prot.fill(0);
-  const dry = (x, y) => {
-    /* v3 geography: wet NW pine forest core, dry west rocky strip, open sagebrush center,
-       badlands/desert ramping east and south — blended, never rectangular */
-    let d = 0.24 + (x / MW) * 0.40 + (y / MH) * 0.30 + (fbm(x / 26, y / 26, 7) - 0.5) * 0.5;
-    d -= 0.38 * (1 - smooth(42, 92, Math.hypot(x - 34, y - 20)));            // NW forest core
-    d += 0.16 * smooth(28, 10, x);                                            // west rocky strip
-    d += 0.30 * smooth(132, 238, x);                                          // eastern badlands
-    d += 0.26 * smooth(112, 200, y) * smooth(60, 140, x);                     // southern desert (east-weighted)
-    d += (fbm(x / 46, y / 46, 19) - 0.5) * 0.22;                              // macro variation
-    return clamp(d, 0, 1);
-  };
+  const dry = (x, y) => clamp((x / MW) * 0.55 + (y / MH) * 0.42 + (fbm(x / 26, y / 26, 7) - 0.5) * 0.55, 0, 1);
   this.dry = dry;
 
   /* 1. terrain */
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
     const d = dry(x, y), n = fbm(x / 9, y / 9, 3), i = y * MW + x; let k;
-    if (d < 0.36) k = n > 0.3 ? K.GRASS : K.DIRT; else if (d < 0.56) k = n > 0.62 ? K.GRASS : (n > 0.38 ? K.DIRT : K.SAND); else k = n > 0.72 ? K.DIRT : (n > 0.44 ? K.SAND : K.ROCKY);
+    if (d < 0.34) k = n > 0.32 ? K.GRASS : K.DIRT; else if (d < 0.5) k = n > 0.5 ? K.GRASS : (n > 0.3 ? K.DIRT : K.SAND); else k = n > 0.62 ? K.DIRT : (n > 0.34 ? K.SAND : K.ROCKY);
     if (d > 0.62 && n < 0.3) k = K.ROCKY;
     this.kind[i] = k; this.vari[i] = (hash2(x, y, 9) * 255) | 0;
   }
-  // cliff masses (mesas) — smoothed by cellular automata; fewer in wet forest, more in dry lands
+  // cliff masses (mesas) — smoothed by cellular automata
   const cl = new Uint8Array(MW * MH);
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const e = fbm(x / 17, y / 17, 21), d = dry(x, y); const th = 0.68 + (d < 0.3 ? 0.09 : 0) - (d > 0.62 ? 0.04 : 0); cl[y * MW + x] = (e > th) ? 1 : 0; }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const e = fbm(x / 17, y / 17, 21), d = dry(x, y); cl[y * MW + x] = (e > 0.66 + (d < 0.3 ? 0.07 : 0)) ? 1 : 0; }
   for (let pass = 0; pass < 2; pass++) { const c2 = cl.slice(); for (let y = 1; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) { let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) n += cl[(y + dy) * MW + x + dx]; c2[y * MW + x] = n >= 5 ? 1 : 0; } cl.set(c2); }
   for (let i = 0; i < MW * MH; i++) if (cl[i]) this.kind[i] = K.CLIFF;
-  /* --- hand-shaped frontier features (before POI clearing) --- */
-  // Red Mesa: a broad mesa plateau far east
-  for (let y = 34; y < 78; y++) for (let x = 232; x < 286; x++) { if (!this.inb(x, y)) continue; const e = fbm(x / 11, y / 11, 31), dd = Math.hypot((x - 258) / 25, (y - 55) / 21) * (0.9 + (hash2(x, y, 33) - 0.5) * 0.3); if (dd < 1 && e > 0.5) this.kind[y * MW + x] = K.CLIFF; } // wobbled mesa rim
-  // Skeleton Canyon: a winding cliff-walled corridor in the far south-east
-  for (let x = 220; x <= 270; x++) { const cy = 186 + Math.sin((x - 220) / 50 * Math.PI) * 12; for (let dy = -18; dy <= 18; dy++) { const y = Math.round(cy + dy); if (!this.inb(x, y)) continue; const w = Math.abs(dy), edge = 6.5 + (hash2(x, y, 24) - 0.5) * 2.6; if (w > edge && w < 19 && this.kindAt(x, y) !== K.DEEP) this.kind[y * MW + x] = K.CLIFF; } }
-  // west badlands: rocky uplift along the western edge
-  for (let y = 56; y < 126; y++) for (let x = 3; x < 18; x++) { if (!this.inb(x, y)) continue; const e = fbm(x / 8, y / 8, 27); if (x < 4 + e * 10 && e > 0.4 && this.kindAt(x, y) !== K.DEEP && this.kindAt(x, y) !== K.SHALLOW) this.kind[y * MW + x] = e > 0.72 ? K.CLIFF : K.ROCKY; }
   // border cliffs
   for (let x = 0; x < MW; x++) for (let t = 0; t < 2; t++) { this.set(x, t, K.CLIFF); this.set(x, MH - 1 - t, K.CLIFF); }
   for (let y = 0; y < MH; y++) for (let t = 0; t < 2; t++) { this.set(t, y, K.CLIFF); this.set(MW - 1 - t, y, K.CLIFF); }
@@ -664,27 +629,25 @@ World.gen = function () {
 
   /* 3. river */
   for (let y = 0; y < MH; y++) {
-    const cx = riverX(y), ford = (y > 19 && y < 25) || (y > 94 && y < 100) || (y > 128 && y < 134);
+    const cx = riverX(y), ford = (y > 19 && y < 25) || (y > 94 && y < 100);
     for (let x = Math.floor(cx - 6); x <= Math.ceil(cx + 6); x++) {
       if (!this.inb(x, y)) continue; const d = Math.abs(x - cx); let k = null;
       if (d < 1.7) k = ford ? K.SHALLOW : K.DEEP; else if (d < 3.4) k = K.SHALLOW; else if (d < 4.4 && hash2(x, y, 4) > 0.45) k = K.MUD;
       if (k != null && this.kind[y * MW + x] !== K.CLIFF || (k != null && d < 3.4)) { if (y > 1 && y < MH - 2) this.kind[y * MW + x] = k; }
     }
   }
-  // lake near the pine camp & ponds: organic shorelines via angular harmonic wobble (never rectangular, never noisy)
-  const pond = (px, py, rx, ry, seed) => { for (let y = py - ry - 3; y <= py + ry + 3; y++) for (let x = px - rx - 3; x <= px + rx + 3; x++) { if (!this.inb(x, y)) continue; const ang = Math.atan2((y - py) / ry, (x - px) / rx); const wob = 1 + 0.15 * Math.sin(ang * 3 + seed) + 0.1 * Math.sin(ang * 7 + seed * 2.3) + 0.09 * Math.sin(ang * 13 + seed * 4.1) + (hash2(x, y, seed) - 0.5) * 0.1; const d = Math.hypot((x - px) / rx, (y - py) / ry) * wob; if (d < 0.66) this.set(x, y, K.DEEP); else if (d < 0.98) this.set(x, y, K.SHALLOW); else if (d < 1.16 && hash2(x, y, (seed || 6) + 3) > 0.4) this.set(x, y, K.MUD); } };
-  pond(38, 33, 8, 6, 6); pond(14, 78, 4, 3, 61); pond(128, 68, 4, 3, 62); pond(150, 168, 6, 4, 63); pond(232, 112, 5, 3, 64); pond(238, 178, 4, 3, 65); pond(74, 188, 4, 3, 66);
+  // lake near the pine camp & pond at ranch
+  const pond = (px, py, rx, ry) => { for (let y = py - ry - 2; y <= py + ry + 2; y++) for (let x = px - rx - 2; x <= px + rx + 2; x++) { if (!this.inb(x, y)) continue; const d = Math.hypot((x - px) / rx, (y - py) / ry); if (d < 0.7) this.set(x, y, K.DEEP); else if (d < 1.0) this.set(x, y, K.SHALLOW); else if (d < 1.15 && hash2(x, y, 6) > 0.4) this.set(x, y, K.MUD); } };
+  pond(40, 32, 6, 4); pond(14, 78, 4, 3); pond(128, 68, 4, 3);
 
   /* 4. roads */
-  const baseCost = (tx, ty) => { const k = this.kind[ty * MW + tx]; if (k === K.CLIFF) return Infinity; if (tx < 3 || ty < 3 || tx > MW - 4 || ty > MH - 4) return Infinity; let c = k === K.DEEP ? 7 : k === K.SHALLOW ? 3.5 : k === K.ROAD ? 0.35 : k === K.ROCKY ? 1.4 : k === K.MUD ? 1.4 : 1; c += hash2(tx, ty, 12) * 0.55; return c; };
+  const baseCost = (tx, ty) => { const k = this.kind[ty * MW + tx]; if (k === K.CLIFF) return Infinity; if (tx < 3 || ty < 3 || tx > MW - 4 || ty > MH - 4) return Infinity; let c = k === K.DEEP ? 6 : k === K.SHALLOW ? 2 : k === K.ROAD ? 0.35 : k === K.ROCKY ? 1.4 : k === K.MUD ? 1.4 : 1; c += hash2(tx, ty, 12) * 0.55; return c; };
   const roadTo = (a, b) => {
     const A = POI[a], B = POI[b], p = this.astar(A.x, A.y, B.x, B.y, { cost: baseCost, maxIter: 80000, hw: 1.2 }); if (!p) { console.warn('road fail', a, b); return; }
     for (const [x, y] of p) { this.roadPts.push([x, y]); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (Math.abs(dx) + Math.abs(dy) === 2 && hash2(x + dx, y + dy, 8) > 0.45) continue; const tx = x + dx, ty = y + dy; if (!this.inb(tx, ty)) continue; const k = this.kind[ty * MW + tx]; if (k === K.DEEP) this.kind[ty * MW + tx] = K.PLANK; else if (k === K.SHALLOW || k === K.PLANK) { /* ford */ } else if (k !== K.CLIFF) this.kind[ty * MW + tx] = K.ROAD; } }
   };
   this.roadPts = [];
   roadTo('ranch', 'town'); roadTo('town', 'station'); roadTo('ranch', 'pine'); roadTo('town', 'manor'); roadTo('town', 'grave'); roadTo('station', 'mine'); roadTo('station', 'cabin'); roadTo('ranch', 'camp'); roadTo('town', 'bridge');
-  /* v3 frontier roads — connect the new lands */
-  roadTo('ranch', 'westbad'); roadTo('pine', 'lake'); roadTo('lake', 'trapper'); roadTo('town', 'outpost'); roadTo('outpost', 'redmesa'); roadTo('outpost', 'drylake'); roadTo('station', 'drylake'); roadTo('drylake', 'skeleton'); roadTo('mine', 'drylake'); roadTo('ranch', 'wildhorses'); roadTo('wildhorses', 'station');
   // bridge approach: ensure planks on both sides of deep water at the main crossing
   // two-phase (collect, then apply) so planks cannot cascade along the river
   const widen = [];
@@ -859,41 +822,6 @@ World.buildAll = function (clear) {
     for (const [dx, dy] of [[-9, 3], [9, 3], [-9, -5], [9, -5], [0, 6]]) this.addProp('lamp', (mx + dx) * T, (my + dy) * T, { v: 0 });
     this.addProp('wagon', (mx - 9) * T, (my + 7) * T, { v: 0 }); this.addProp('crate', (mx + 10) * T, (my + 6) * T, { v: 0 }); this.addProp('barrel', (mx + 9) * T, (my + 7) * T, { v: 0 }); this.addProp('expbarrel', (mx - 11) * T, (my - 6) * T, { v: 0 }); this.addProp('expbarrel', (mx + 11) * T, (my - 6) * T, { v: 1 });
     this.spawn.manorGate = { x: mx * T + 16, y: (my + 10) * T }; this.spawn.manorDoor = house.front; this.protRect(mx - 14, my - 10, mx + 14, my + 11); }
-  /* ================= V3 FRONTIER LANDS ================= */
-  // forest lake pier & camp — POI sits on the dry strip between pond (west) and river (east)
-  { const p = POI.lake, px2 = p.x * T, py2 = p.y * T; this.fillRect(45, 34, 48, 35, K.PLANK);
-    this.addProp('post', 45 * T + 4, 33 * T - 4, {}); this.addProp('post', 48 * T + 28, 33 * T - 4, {}); this.addProp('post', 45 * T + 4, 35 * T + 20, {}); this.addProp('post', 48 * T + 28, 35 * T + 20, {});
-    this.addProp('fire', px2 - 50, py2 + 26, { v: 0 }); this.addProp('tent', px2 - 30, py2 + 60, { v: 0 }); this.addProp('crate', px2 - 70, py2 + 40, { v: 0 }); this.addProp('log', px2 + 40, py2 + 70, { v: 0, rot: 0.8, s: 0.8 }); this.addProp('sign', px2 - 20, py2 - 60, { v: 0 });
-    this.protRect(p.x - 9, p.y - 7, p.x + 7, p.y + 8); }
-  // trapper's cabin (north forest)
-  { const p = POI.trapper, cb = B({ id: 'trappercabin', name: 'کلبه‌ی تله‌گذار', x: p.x - 3, y: p.y - 2, w: 6, h: 5, door: 'S', dpos: 2, roof: '#4e4438', wall: '#332b22', type: 'cabin' }); this.townB.trappercabin = cb;
-    const r = this.inner(cb); this.addProp('bed', r.x1 - 18, r.y0 + 24, { v: 0 }); this.addProp('table', r.x0 + 30, r.y0 + 30, { v: 0 }); this.addProp('stove', r.x0 + 16, r.y1 - 20, { v: 0 });
-    this.addProp('fire', (p.x + 4) * T, (p.y + 3) * T, { v: 0 }); this.addProp('post', (p.x - 5) * T, (p.y + 3) * T, {}); this.addProp('post', (p.x - 5) * T, (p.y + 5) * T, {}); this.addProp('log', (p.x - 6) * T, (p.y + 4) * T, { v: 0, s: 0.7 }); this.addProp('barrel', (p.x + 5) * T, (p.y + 1) * T, { v: 0 }); this.protRect(p.x - 7, p.y - 5, p.x + 7, p.y + 6); }
-  // west badlands: abandoned dig
-  { const p = POI.westbad, px2 = p.x * T, py2 = p.y * T; this.addProp('rock2', px2 - 160, py2 - 90, { v: 0 }); this.addProp('rock2', px2 + 150, py2 + 60, { v: 1 }); this.addProp('rock1', px2 + 90, py2 - 120, { v: 0 });
-    this.addProp('dead', px2 - 80, py2 + 30, { v: 0 }); this.addProp('bones', px2 + 60, py2 - 40, { v: 0 }); this.addProp('mound', px2 - 40, py2 - 70, { v: 0 }); this.addProp('cart', px2 - 100, py2 - 60, { v: 0 }); this.addProp('crate', px2 - 130, py2 - 40, { v: 1 }); this.addProp('sign', px2 + 20, py2 + 10, { v: 1 });
-    this.spawn.westDig = { x: px2 - 40, y: py2 - 70 }; this.protRect(p.x - 8, p.y - 7, p.x + 8, p.y + 7); }
-  // Redgate trading outpost
-  { const p = POI.outpost, ox = p.x, oy = p.y; this.fillRect(ox - 10, oy - 5, ox + 12, oy + 8, K.DIRT);
-    const st = B({ id: 'outpoststore', name: 'پست تجاری ردگیت', x: ox - 5, y: oy - 3, w: 10, h: 6, door: 'S', dpos: 4, roof: '#5f6a4a', wall: '#3c4430', type: 'store', light: true }); this.townB.outpoststore = st; const r = this.inner(st);
-    addCounter(r.x0 + 16, r.y0 + 60, 150, 14); addShelf(r.x0 + 6, r.y0 + 4, 170, 14); this.npcSpots.outpostTrader = { x: r.x0 + 90, y: r.y0 + 44 };
-    this.fence((ox - 9) * T, (oy + 3) * T, (ox + 2) * T, (oy + 7) * T, [{ side: 'N', at: (ox - 4) * T, w: 60 }]); this.addProp('trough', (ox - 5) * T, (oy + 6) * T + 10, { v: 0 }); this.addProp('hitch', (ox - 1) * T, (oy + 2) * T, { v: 0 });
-    this.addProp('wagon', (ox + 5) * T, (oy + 5) * T, { v: 0 }); this.addProp('crate', (ox - 8) * T, (oy - 2) * T, { v: 0 }); this.addProp('barrel', (ox + 6) * T, (oy - 2) * T, { v: 0 }); this.addProp('lamp', (ox - 3) * T, (oy + 2) * T, { v: 0 }); this.addProp('lamp', (ox + 7) * T, (oy + 2) * T, { v: 0 }); this.addProp('well', (ox + 9) * T, (oy + 3) * T, { v: 0 });
-    this.spawn.outpost = { x: ox * T + 16, y: (oy + 5) * T }; this.protRect(ox - 11, oy - 6, ox + 13, oy + 9); }
-  // Red Mesa camp
-  { const p = POI.redmesa, px2 = p.x * T, py2 = p.y * T; this.addProp('tent', px2 - 90, py2 + 60, { v: 0 }); this.addProp('tent', px2 + 80, py2 + 80, { v: 1 }); this.addProp('fire', px2, py2 + 40, { v: 0 }); this.addProp('crate', px2 - 50, py2 + 30, { v: 0 }); this.addProp('crate', px2 + 40, py2 + 20, { v: 1 }); this.addProp('expbarrel', px2 + 60, py2 + 50, { v: 0 });
-    this.addProp('rock2', px2 - 220, py2 - 60, { v: 0 }); this.addProp('rock1', px2 + 200, py2 - 100, { v: 0 }); this.addProp('dead', px2 - 150, py2 + 100, { v: 0 }); this.addProp('bones', px2 + 120, py2 - 40, { v: 0 }); this.addProp('saguaro', px2 + 180, py2 + 120, { v: 0 });
-    this.spawn.redmesaCamp = { x: px2, y: py2 + 40 }; this.protRect(p.x - 9, p.y - 7, p.x + 9, p.y + 8); }
-  // dry lake bed — organic salt-flat patch
-  { const p = POI.drylake, px2 = p.x * T, py2 = p.y * T; for (let y = p.y - 9; y <= p.y + 9; y++) for (let x = p.x - 12; x <= p.x + 12; x++) { if (!this.inb(x, y)) continue; const d = Math.hypot((x - p.x) / 12, (y - p.y) / 9) * (0.86 + (hash2(x, y, 72) - 0.5) * 0.42); if (d < 1) this.set(x, y, K.SAND); }
-    this.addProp('wagon', px2 - 120, py2 - 40, { v: 1 }); this.addProp('bones', px2 - 60, py2 + 30, { v: 0 }); this.addProp('bones', px2 + 100, py2 - 20, { v: 1 }); this.addProp('rock1', px2 + 140, py2 + 60, { v: 0 }); this.addProp('mound', px2 + 30, py2 + 50, { v: 0 }); this.addProp('sign', px2 + 10, py2 - 60, { v: 1 });
-    this.protRect(p.x - 12, p.y - 8, p.x + 12, p.y + 8); }
-  // Skeleton Canyon camp
-  { const p = POI.skeleton, px2 = p.x * T, py2 = p.y * T; this.addProp('tent', px2 - 60, py2 - 30, { v: 0 }); this.addProp('fire', px2 + 10, py2 + 10, { v: 0 }); this.addProp('cart', px2 - 130, py2 + 40, { v: 0 }); this.addProp('crate', px2 + 60, py2 - 20, { v: 0 }); this.addProp('crate', px2 + 80, py2 + 10, { v: 1 }); this.addProp('barrel', px2 + 40, py2 + 40, { v: 0 }); this.addProp('bones', px2 + 150, py2 - 60, { v: 0 }); this.addProp('dead', px2 - 160, py2 - 50, { v: 0 });
-    this.spawn.canyonCamp = { x: px2 + 10, y: py2 + 10 }; this.protRect(p.x - 9, p.y - 8, p.x + 9, p.y + 8); }
-  // wild horse prairie — organic grass patch, never a hard rectangle
-  { const p = POI.wildhorses, px2 = p.x * T, py2 = p.y * T; for (let y = p.y - 8; y <= p.y + 8; y++) for (let x = p.x - 9; x <= p.x + 9; x++) { if (!this.inb(x, y)) continue; const d = Math.hypot((x - p.x) / 9, (y - p.y) / 8) * (0.88 + (hash2(x, y, 71) - 0.5) * 0.4); if (d < 1 && this.kindAt(x, y) !== K.DEEP && this.kindAt(x, y) !== K.SHALLOW) this.set(x, y, K.GRASS); }
-    this.fence((p.x - 7) * T, (p.y - 6) * T, (p.x + 7) * T, (p.y + 6) * T, [{ side: 'N', at: px2, w: 90 }, { side: 'S', at: px2 - 60, w: 60 }]); this.addProp('trough', px2 - 60, py2 + 5 * T - 10, { v: 0 }); this.addProp('sign', px2 + 90, py2 - 100, { v: 2 }); this.protRect(p.x - 8, p.y - 7, p.x + 8, p.y + 7); }
   /* ================= small stuff along roads, camps ================= */
   this.addProp('sign', (POI.ranch.x + 18) * T, (POI.ranch.y - 3) * T, { v: 2 });
   this.spawn.player = { x: this.spawn.bed.x, y: this.spawn.bed.y };
@@ -904,61 +832,33 @@ World.scatter = function () {
   const T = TILE, rngp = (x, y, s) => hash2(x, y, s + this.seed);
   const ok = (x, y, rad) => { const tx = Math.floor(x / T), ty = Math.floor(y / T); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const px = tx + dx, py = ty + dy; if (!this.inb(px, py)) return false; const k = this.kind[py * MW + px]; if (k === K.CLIFF || k === K.DEEP || k === K.ROAD || k === K.PLANK || k === K.FLOOR || k === K.WALL || k === K.TRACK || k === K.TRACKBR || k === K.CAVE || k === K.FIELD) return false; if (this.prot[py * MW + px]) return false; } return true; };
   const roadNear = (tx, ty, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const k = this.kindAt(tx + dx, ty + dy); if (k === K.ROAD || k === K.PLANK || k === K.TRACK) return true; } return false; };
-  const waterNear = (tx, ty, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const k = this.kindAt(tx + dx, ty + dy); if (k === K.DEEP || k === K.SHALLOW || k === K.MUD) return true; } return false; };
-  /* v3 vegetation: per-biome placement with clumping noise, natural glades and ragged forest edges.
-     Strong jitter breaks the old visible 2-tile grid; grove noise (11-tile scale) makes dense stands,
-     open glades and irregular forest borders instead of uniform scatter. */
   for (let cy = 2; cy < MH - 2; cy += 2) for (let cx = 2; cx < MW - 2; cx += 2) {
-    const jx = (rngp(cx, cy, 1) - 0.5) * 1.8, jy = (rngp(cx, cy, 2) - 0.5) * 1.8;
-    const x = (cx + 0.5 + jx) * T, y = (cy + 0.5 + jy) * T;
+    const x = (cx + rngp(cx, cy, 1)) * T, y = (cy + rngp(cx, cy, 2)) * T, d = this.dry(cx, cy), r1 = rngp(cx, cy, 3), r2 = rngp(cx, cy, 4);
     if (!ok(x, y)) continue; if (roadNear(cx, cy, 2)) continue;
-    const d = this.dry(cx, cy), r1 = rngp(cx, cy, 3), r2 = rngp(cx, cy, 4), r3 = rngp(cx, cy, 6);
-    const patch = fbm(cx / 7, cy / 7, 33);       // small-scale patchiness
-    const grove = fbm(cx / 11, cy / 11, 47);     // grove-scale clumping
-    const nearW = waterNear(cx, cy, 2);
-    if (d < 0.36) {
-      /* ---- conifer forest: dense wet core, ragged edges, glades ---- */
-      const core = smooth(0.34, 0.14, d);
-      const glade = grove < 0.34 ? 0.25 : grove > 0.62 ? 1.35 : 0.85;
-      const dens = 1.25 * core * glade * smooth(0.36, 0.26, d);
-      if (r1 < dens) this.addProp(r2 < 0.74 ? (r3 < 0.5 ? 'pine2' : 'pine') : r2 < 0.92 ? 'oak' : 'dead', x, y, { v: rint(0, 3), s: 0.8 + r2 * 0.45 });
-      else if (r1 < dens + 0.09) this.addProp(r2 < 0.4 ? 'bush' : r2 < 0.62 ? 'sage' : r2 < 0.82 ? 'flower' : 'rock3', x, y, { v: rint(0, 3) });
-      else if (r1 < dens + 0.115) this.addProp(r2 < 0.55 ? 'stump' : 'log', x, y, { v: rint(0, 2), s: r2 < 0.55 ? 0.9 : 0.5 + r3 * 0.25 });
-      else if (r1 < dens + 0.14) this.addProp('track', x, y, { v: rint(0, 1) });
-      else if (r1 < dens + 0.165) this.addProp('grasstuft', x, y, { v: rint(0, 1) });
-    } else if (nearW) {
-      /* ---- shores: reeds, willows, drifted logs ---- */
-      if (r1 < 0.3) this.addProp(r2 < 0.58 ? 'reed' : r2 < 0.8 ? 'bush' : 'cottonwood', x, y, { v: rint(0, 3), s: r2 < 0.8 ? 0.9 + r3 * 0.3 : 0.85 + r3 * 0.2 });
-      else if (r1 < 0.4) this.addProp(r2 < 0.7 ? 'grasstuft' : 'flower', x, y, { v: rint(0, 1) });
-      else if (r1 < 0.44) this.addProp('log', x, y, { v: rint(0, 2), s: 0.55 + r3 * 0.2, rot: r3 * TAU });
-    } else if (d < 0.50) {
-      /* ---- open sagebrush grassland ---- */
-      const sageP = smooth(0.36, 0.5, d) * (0.45 + patch * 0.7);
-      if (r1 < 0.04 + sageP * 0.2) this.addProp(r2 < 0.5 ? 'sage' : r2 < 0.78 ? 'bush' : 'grasstuft', x, y, { v: rint(0, 3) });
-      else if (r1 < 0.09 && patch > 0.56) this.addProp('flower', x, y, { v: rint(0, 3) });
-      else if (r1 < 0.12 && grove > 0.52) this.addProp(r2 < 0.6 ? 'juniper' : 'oak', x, y, { v: rint(0, 3), s: 0.85 + r2 * 0.3 });
-      else if (r1 < 0.16) this.addProp(r2 < 0.45 ? 'rock3' : r2 < 0.75 ? 'rock1' : 'track', x, y, { v: rint(0, 3) });
-      else if (r1 < 0.175) this.addProp('stump', x, y, { v: rint(0, 2) });
-    } else if (d < 0.68) {
-      /* ---- dry scrub / high desert ---- */
-      if (r1 < 0.12) this.addProp(r2 < 0.58 ? 'sage' : r2 < 0.84 ? 'bush' : 'yucca', x, y, { v: rint(0, 3) });
-      else if (r1 < 0.18) this.addProp(r2 < 0.4 ? 'cactus' : r2 < 0.68 ? 'rock3' : r2 < 0.88 ? 'rock1' : 'juniper', x, y, { v: rint(0, 3), s: 0.9 + r2 * 0.3 });
-      else if (r1 < 0.205) this.addProp(r2 < 0.55 ? 'tumble' : 'dead', x, y, { v: rint(0, 3) });
-      else if (r1 < 0.22) this.addProp('track', x, y, { v: rint(0, 1) });
+    const patch = fbm(cx / 7, cy / 7, 33);
+    const k = this.kindAt(cx, cy);
+    if (d < 0.36) { // forest/prairie
+      const forest = (cx < 52 && cy < 46) ? 0.75 : 0.22;
+      if (r1 < forest * smooth(0.28, 0.55, patch) + 0.04) this.addProp(r2 < 0.78 ? 'pine' : 'oak', x, y, { v: rint(0, 3), s: 0.85 + r2 * 0.4 });
+      else if (r1 < 0.2 + forest * 0.2) this.addProp(r2 < 0.5 ? 'bush' : r2 < 0.8 ? 'flower' : 'rock3', x, y, { v: rint(0, 3) });
+      else if (r1 < 0.215) this.addProp('stump', x, y, { v: rint(0, 2) });
+    } else if (d < 0.52) {
+      if (r1 < 0.07) this.addProp(r2 < 0.5 ? 'oak' : 'dead', x, y, { v: rint(0, 3) });
+      else if (r1 < 0.2) this.addProp(r2 < 0.55 ? 'bush' : r2 < 0.8 ? 'rock3' : 'tumble', x, y, { v: rint(0, 3) });
+      else if (r1 < 0.26) this.addProp('cactus', x, y, { v: rint(0, 3) });
     } else {
-      /* ---- badlands / far desert ---- */
-      if (r1 < 0.10) this.addProp(r2 < 0.4 ? 'rock1' : r2 < 0.7 ? 'rock2' : r2 < 0.9 ? 'rock3' : 'saguaro', x, y, { v: rint(0, 3), s: 0.9 + r2 * 0.5 });
-      else if (r1 < 0.16) this.addProp(r2 < 0.62 ? 'sage' : 'dead', x, y, { v: rint(0, 3) });
-      else if (r1 < 0.19) this.addProp(r2 < 0.5 ? 'tumble' : 'bones', x, y, { v: rint(0, 2) });
-      else if (r1 < 0.20) this.addProp('yucca', x, y, { v: rint(0, 3) });
+      if (r1 < 0.11) this.addProp(r2 < 0.55 ? 'saguaro' : 'cactus', x, y, { v: rint(0, 3), s: 0.9 + r2 * 0.4 });
+      else if (r1 < 0.17) this.addProp(r2 < 0.5 ? 'rock3' : r2 < 0.85 ? 'rock1' : 'rock2', x, y, { v: rint(0, 3) });
+      else if (r1 < 0.22) this.addProp(r2 < 0.5 ? 'tumble' : 'dead', x, y, { v: rint(0, 3) });
+      else if (r1 < 0.235) this.addProp('bones', x, y, { v: rint(0, 2) });
     }
   }
-  // riverside reeds and rocks (the river winds the whole map)
-  for (let y = 4; y < MH - 4; y += 2) { const cx = riverX(y); for (const sgn of [-1, 1]) { const tx = Math.round(cx + sgn * 5.4), ty = y; if (rngp(tx, ty, 8) < 0.55 && this.kindAt(tx, ty) !== K.DEEP && this.kindAt(tx, ty) !== K.ROAD && this.kindAt(tx, ty) !== K.PLANK && this.kindAt(tx, ty) !== K.CLIFF && !this.prot[ty * MW + tx] && !roadNear(tx, ty, 2)) this.addProp(rngp(tx, ty, 9) < 0.55 ? 'reed' : rngp(tx, ty, 9) < 0.85 ? 'bush' : 'rock3', tx * T + 14, ty * T + 14, { v: rint(0, 3) }); } }
+  // riverside reeds and rocks
+  for (let y = 4; y < MH - 4; y += 2) { const cx = riverX(y); for (const sgn of [-1, 1]) { const tx = Math.round(cx + sgn * 5.4), ty = y; if (rngp(tx, ty, 8) < 0.55 && this.kindAt(tx, ty) !== K.DEEP && this.kindAt(tx, ty) !== K.ROAD && this.kindAt(tx, ty) !== K.PLANK && this.kindAt(tx, ty) !== K.CLIFF && !this.prot[ty * MW + tx] && !roadNear(tx, ty, 2)) this.addProp(rngp(tx, ty, 9) < 0.6 ? 'bush' : 'rock3', tx * T + 14, ty * T + 14, { v: rint(0, 3) }); } }
   // roadside signs/props
   const pts = this.roadPts; for (let i = 20; i < pts.length; i += 41) { const [x, y] = pts[i]; if (!this.prot[y * MW + x] && this.kindAt(x + 2, y) === K.GRASS) this.addProp('post', (x + 2) * T + 16, y * T + 16, { v: 0 }); }
   // poacher / hunting zone markers
-  this.spawn.huntForest = { x: 36 * T, y: 30 * T }; this.spawn.huntPrairie = { x: 44 * T, y: 56 * T }; this.spawn.huntBadlands = { x: 200 * T, y: 60 * T };
+  this.spawn.huntForest = { x: 36 * T, y: 30 * T }; this.spawn.huntPrairie = { x: 44 * T, y: 56 * T };
 };
 
 World.finish = function () {
@@ -1094,33 +994,6 @@ const MK = {
   dummy(v, rng) { return MK.scarecrow(v, rng); },
   gate(v, rng) { return mk(8, 8, 4, 4, () => {}); },
   plank(v, rng) { return mk(8, 8, 4, 4, () => {}); },
-  /* ---- v3 nature sprites ---- */
-  pine2(v, rng) { return mk(112, 138, 56, 100, (x) => {
-    x.fillStyle = C.wd; x.fillRect(51, 88, 10, 16); x.fillStyle = Gx.sh(C.wd, 0.2); x.fillRect(51, 88, 4, 16);
-    const cx = 56, cy = 54, tiers = [[46, '#1e3626', C.pine], [36, C.pine, '#233d2b'], [27, '#33563a', C.pine], [18, C.pinel, '#33563a'], [9, '#6b8f50', C.pinel]];
-    for (const [r, c, d] of tiers) { const n = 14; x.beginPath(); for (let i = 0; i < n * 2; i++) { const a = (i / (n * 2)) * TAU, rr = i % 2 ? r * 0.6 : r * (0.9 + rng() * 0.18); x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.92); } x.closePath(); x.fillStyle = d; x.fill(); x.save(); x.translate(-3, -3); x.scale(0.95, 0.95); x.fillStyle = c; x.fill(); x.restore(); }
-    x.strokeStyle = 'rgba(180,220,150,0.22)'; x.lineWidth = 1; for (let i = 0; i < 20; i++) { const a = rng() * TAU, r = 8 + rng() * 34; x.beginPath(); x.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); x.lineTo(cx + Math.cos(a) * (r + 6), cy + Math.sin(a) * (r + 6)); x.stroke(); }
-  }); },
-  cottonwood(v, rng) { return mk(150, 140, 75, 104, (x) => {
-    x.fillStyle = '#6a5138'; x.fillRect(66, 92, 18, 22); x.fillStyle = '#8a6f50'; x.fillRect(66, 92, 7, 22);
-    x.strokeStyle = '#5a4330'; x.lineWidth = 6; x.lineCap = 'round'; x.beginPath(); x.moveTo(75, 96); x.lineTo(52, 66); x.moveTo(75, 92); x.lineTo(102, 62); x.stroke();
-    const cols = [['#7fa04a', '#a8c46a', '#4a6a30'], ['#8aa855', '#b2cc74', '#526e32'], ['#72984a', '#9cba60', '#42602c']][v % 3];
-    for (let i = 0; i < 22; i++) { const a = rng() * TAU, d2 = rng() * 34; leafClump(x, 75 + Math.cos(a) * d2, 52 + Math.sin(a) * d2 * 0.8, 14 + rng() * 9, cols[0], cols[1], cols[2], rng); }
-    for (let i = 0; i < 10; i++) { const a = rng() * TAU, d2 = rng() * 24; leafClump(x, 72 + Math.cos(a) * d2, 44 + Math.sin(a) * d2 * 0.8, 8 + rng() * 6, cols[1], Gx.sh(cols[1], 0.2), cols[0], rng); }
-  }); },
-  juniper(v, rng) { return mk(70, 64, 35, 50, (x) => {
-    x.fillStyle = '#5a4430'; x.fillRect(31, 42, 8, 12);
-    for (let i = 0; i < 8; i++) leafClump(x, 35 + (rng() - 0.5) * 26, 30 + (rng() - 0.5) * 14, 10 + rng() * 6, '#3d5a3a', '#5a7a4e', '#2a4028', rng);
-    x.fillStyle = '#7a9ab0'; for (let i = 0; i < 5; i++) { x.beginPath(); x.arc(24 + rng() * 22, 26 + rng() * 12, 1.6, 0, TAU); x.fill(); }
-  }); },
-  sage(v, rng) { return mk(48, 34, 24, 28, (x) => { for (let i = 0; i < 7; i++) leafClump(x, 24 + (rng() - 0.5) * 26, 20 + (rng() - 0.5) * 8, 6 + rng() * 4, '#8a9a72', '#b2bc94', '#5a6a4a', rng); x.strokeStyle = '#c9d0b0'; x.lineWidth = 1; for (let i = 0; i < 6; i++) { const px2 = 10 + rng() * 28; x.beginPath(); x.moveTo(px2, 24); x.lineTo(px2 + (rng() - 0.5) * 4, 12 + rng() * 6); x.stroke(); } }); },
-  yucca(v, rng) { return mk(56, 58, 28, 50, (x) => {
-    x.strokeStyle = '#5a7a4e'; x.lineCap = 'round'; for (let i = 0; i < 16; i++) { const a = -Math.PI / 2 + (rng() - 0.5) * 2.4, len = 12 + rng() * 16; x.lineWidth = 2.2; x.beginPath(); x.moveTo(28, 44); x.quadraticCurveTo(28 + Math.cos(a) * len * 0.6, 44 + Math.sin(a) * len * 0.6, 28 + Math.cos(a) * len, 44 + Math.sin(a) * len * 0.85); x.stroke(); }
-    if (v % 2) { x.strokeStyle = '#6a8a5a'; x.lineWidth = 2.4; x.beginPath(); x.moveTo(28, 44); x.lineTo(30, 16); x.stroke(); x.fillStyle = '#f2ecd8'; for (let i = 0; i < 6; i++) { x.beginPath(); x.arc(26 + rng() * 10, 10 + rng() * 10, 2.6, 0, TAU); x.fill(); } }
-  }); },
-  reed(v, rng) { return mk(44, 48, 22, 40, (x) => { x.strokeStyle = '#6a8a3a'; x.lineWidth = 1.6; x.lineCap = 'round'; for (let i = 0; i < 14; i++) { const px2 = 8 + rng() * 28, sway = (rng() - 0.5) * 10; x.beginPath(); x.moveTo(px2, 42); x.quadraticCurveTo(px2 + sway * 0.5, 26, px2 + sway, 10 + rng() * 12); x.stroke(); if (rng() < 0.5) { x.fillStyle = '#8a6a3a'; x.beginPath(); x.ellipse(px2 + sway, 9 + rng() * 6, 1.5, 4, sway * 0.02, 0, TAU); x.fill(); } } }); },
-  grasstuft(v, rng) { return mk(34, 24, 17, 18, (x) => { x.lineCap = 'round'; for (let i = 0; i < 12; i++) { const px2 = 6 + rng() * 22, h2 = 5 + rng() * 7; x.strokeStyle = rng() < 0.5 ? '#86a85a' : '#a4b060'; x.lineWidth = 1.3; x.beginPath(); x.moveTo(px2, 18); x.quadraticCurveTo(px2 + (rng() - 0.5) * 4, 18 - h2 * 0.6, px2 + (rng() - 0.5) * 7, 18 - h2); x.stroke(); } }); },
-  track(v, rng) { return mk(30, 18, 15, 9, (x) => { x.fillStyle = 'rgba(70,50,30,0.28)'; const n = v ? 4 : 6; for (let i = 0; i < n; i++) { const px2 = 4 + i * 4 + rng() * 2, py2 = 6 + (i % 2 ? 3 : 0); x.beginPath(); x.ellipse(px2, py2, 2.6, 1.7, 0.3, 0, TAU); x.fill(); } }); },
 };
 function rock(x, cx, cy, rx, ry, rng) {
   const n = 9, pts = []; for (let i = 0; i < n; i++) { const a = (i / n) * TAU, r = 0.78 + rng() * 0.3; pts.push([cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r]); }
@@ -1133,8 +1006,8 @@ function rock(x, cx, cy, rx, ry, rng) {
 }
 
 /* shadow footprint per prop: [rx, ry, ox, oy] relative to base point */
-const SHADOW = { pine: [26, 12, 8, 4], pine2: [28, 13, 9, 4], cottonwood: [34, 14, 10, 4], juniper: [16, 7, 4, 2], sage: [12, 5, 3, 2], yucca: [10, 5, 3, 2], reed: [10, 4, 2, 2], grasstuft: [8, 3, 2, 1], oak: [30, 13, 9, 4], dead: [10, 4, 6, 2], cactus: [9, 4, 4, 2], saguaro: [11, 5, 6, 2], rock1: [18, 8, 5, 3], rock2: [34, 13, 6, 3], rock3: [11, 5, 3, 2], bush: [18, 7, 4, 3], barrel: [11, 5, 3, 2], expbarrel: [11, 5, 3, 2], crate: [13, 6, 3, 2], hay: [20, 8, 3, 3], well: [22, 10, 6, 4], windmill: [18, 8, 10, 4], lamp: [5, 3, 5, 2], tomb: [10, 4, 4, 2], cross: [8, 3, 4, 2], wagon: [40, 14, 4, 6], tent: [30, 12, 6, 4], sign: [8, 3, 4, 2], post: [4, 2, 3, 1], hitch: [26, 4, 3, 2], fenceH: [17, 3, 2, 1], fenceV: [5, 16, 2, 1], gallows: [40, 10, 8, 4], tower: [16, 6, 12, 4], safe: [14, 6, 3, 2], scarecrow: [8, 3, 4, 2], stove: [12, 5, 3, 2], piano: [24, 10, 3, 3], table: [18, 8, 3, 3], bed: [16, 22, 3, 3], cart: [28, 8, 3, 3], dynamite: [14, 5, 2, 2], pew: [26, 5, 2, 2], stump: [12, 5, 3, 2], log: [30, 6, 3, 2], trough: [26, 7, 2, 2] };
-const CANOPY = { pine: { r: 38, oy: -34 }, pine2: { r: 44, oy: -42 }, cottonwood: { r: 52, oy: -46 }, juniper: { r: 20, oy: -16 }, oak: { r: 40, oy: -40 } };
+const SHADOW = { pine: [26, 12, 8, 4], oak: [30, 13, 9, 4], dead: [10, 4, 6, 2], cactus: [9, 4, 4, 2], saguaro: [11, 5, 6, 2], rock1: [18, 8, 5, 3], rock2: [34, 13, 6, 3], rock3: [11, 5, 3, 2], bush: [18, 7, 4, 3], barrel: [11, 5, 3, 2], expbarrel: [11, 5, 3, 2], crate: [13, 6, 3, 2], hay: [20, 8, 3, 3], well: [22, 10, 6, 4], windmill: [18, 8, 10, 4], lamp: [5, 3, 5, 2], tomb: [10, 4, 4, 2], cross: [8, 3, 4, 2], wagon: [40, 14, 4, 6], tent: [30, 12, 6, 4], sign: [8, 3, 4, 2], post: [4, 2, 3, 1], hitch: [26, 4, 3, 2], fenceH: [17, 3, 2, 1], fenceV: [5, 16, 2, 1], gallows: [40, 10, 8, 4], tower: [16, 6, 12, 4], safe: [14, 6, 3, 2], scarecrow: [8, 3, 4, 2], stove: [12, 5, 3, 2], piano: [24, 10, 3, 3], table: [18, 8, 3, 3], bed: [16, 22, 3, 3], cart: [28, 8, 3, 3], dynamite: [14, 5, 2, 2], pew: [26, 5, 2, 2], stump: [12, 5, 3, 2], log: [30, 6, 3, 2], trough: [26, 7, 2, 2] };
+const CANOPY = { pine: { r: 38, oy: -34 }, oak: { r: 40, oy: -40 } };
 
 /* ---- counter / shelf drawn at their own size ---- */
 const rectCache = new Map();
@@ -1695,7 +1568,6 @@ function drawHorse(x, h, t) {
 function drawAnimal(x, an, t) {
   const sp = an.speciesDef, a = an.ang || 0, ph = an.gait || 0, mv = clamp((an.speed || 0) / 200, 0, 1); x.save(); x.translate(an.x, an.y); x.rotate(a);
   const sw = Math.sin(ph) * (2 + mv * 4), sw2 = Math.sin(ph + Math.PI) * (2 + mv * 4), id = an.id || 3;
-  const gz = an.state === 'graze' ? 0.9 + Math.sin(t * 1.3 + id) * 0.4 : 0; x.translate(0, gz); // grazing: relaxed head-down dip
   /* volumetric top-down body: dark rim + base + back highlight + belly shade */
   const body = (rx, ry, base, dark, lite) => { x.fillStyle = dark; Gx.ell(x, 0, 0, rx + 1.1, ry + 1.1); x.fill(); x.fillStyle = base; Gx.ell(x, 0, 0, rx, ry); x.fill(); x.fillStyle = lite; Gx.ell(x, -rx * 0.1, -ry * 0.32, rx * 0.82, ry * 0.52); x.fill(); x.fillStyle = dark; Gx.ell(x, rx * 0.06, ry * 0.52, rx * 0.8, ry * 0.4); x.fill(); };
   /* jointed leg with dark lower + hoof; hy sign picks near/far side */
@@ -1774,19 +1646,6 @@ function drawAnimal(x, an, t) {
     x.fillStyle = '#a8786c'; Gx.ell(x, 23.3, -1.15, 0.85, 1.05); x.fill(); Gx.ell(x, 23.3, 1.15, 0.85, 1.05); x.fill();
     x.fillStyle = '#1c1410'; Gx.ell(x, 18.7, -2.9, 1, 1); x.fill(); Gx.ell(x, 18.7, 2.9, 1, 1); x.fill();
     x.fillStyle = 'rgba(255,255,255,0.75)'; x.fillRect(18.3, -3.3, 0.65, 0.65); x.fillRect(18.3, 2.5, 0.65, 0.65);
-  } else if (an.species === 'sheep') {
-    const c1 = '#e2dac6', dark = '#b0a68e', lite = '#f7f2e4', hoof = '#241a12';
-    limb(7.5, -5.6, sw, 6.5, 2.6, dark, hoof); limb(7.5, 5.6, sw2, 6.5, 2.6, dark, hoof);
-    limb(-7, -5.6, sw2, 6, 2.8, dark, hoof); limb(-7, 5.6, sw, 6, 2.8, dark, hoof);
-    body(11.5, 6.6, c1, dark, lite);
-    x.fillStyle = lite; for (const [px2, py2, r2] of [[-4, -2, 4.2], [0, 1.8, 3.6], [-8, 1.4, 3.4], [4, -1.6, 3.2]]) { Gx.ell(x, px2, py2, r2, r2 * 0.8); x.fill(); }
-    x.fillStyle = dark; Gx.ell(x, -11.4, 0, 2, 2); x.fill();
-    x.fillStyle = dark; Gx.poly(x, [[7.5, -2.6], [13.5, -2], [13.5, 2], [7.5, 2.6]]); x.fill();
-    x.fillStyle = '#d9c2ae'; Gx.ell(x, 14.4, 0, 4.4, 3.1); x.fill();
-    x.strokeStyle = '#c9b98a'; x.lineWidth = 2.2; x.lineCap = 'round';
-    for (const s of [-1, 1]) { x.beginPath(); x.arc(11.4, s * 2.6, 3.6, s > 0 ? -2.6 : 0.54, s > 0 ? -0.54 : 2.6); x.stroke(); } // curled bighorn horns
-    x.fillStyle = '#1c1410'; Gx.ell(x, 16.4, -1.4, 0.85, 0.85); x.fill(); Gx.ell(x, 16.4, 1.4, 0.85, 0.85); x.fill();
-    x.fillStyle = '#4a3a30'; Gx.ell(x, 18.3, 0, 1.1, 0.9); x.fill();
   } else if (an.species === 'bear') {
     const c1 = '#4d3421', dark = '#33220f', lite = '#6a4c32', claw = '#1a110a'; x.scale(1.25, 1.25);
     limb(7.5, -7.4, sw * 0.55, 5.6, 4.6, c1, claw); limb(7.5, 7.4, sw2 * 0.55, 5.6, 4.6, c1, claw);
@@ -1949,7 +1808,7 @@ const Decals = {
 
 /* ---------------- main renderer ---------------- */
 const Rn = {
-  cv: null, ctx: null, S: 1, chunks: new Map(), _ck: 0, lightCv: null, lctx: null, lsprites: {}, fogTex: null, vig: null, grain: null, rain: [], splash: [], pgrid: null, cloudTex: null, t: 0, shakeX: 0, shakeY: 0, ambCol: [255, 255, 255], darkZone: 0, indoor: 0, quality: 1,
+  cv: null, ctx: null, S: 1, chunks: new Map(), lightCv: null, lctx: null, lsprites: {}, fogTex: null, vig: null, grain: null, rain: [], splash: [], pgrid: null, cloudTex: null, t: 0, shakeX: 0, shakeY: 0, ambCol: [255, 255, 255], darkZone: 0, indoor: 0, quality: 1,
   init(canvas, S) {
     this.cv = canvas; this.setScale(S || 1);
     this.lightCv = Gx.mk(VW / 2, VH / 2, () => {}); this.lctx = this.lightCv.getContext('2d');
@@ -1964,34 +1823,22 @@ const Rn = {
     if (this.lsprites[kind]) return this.lsprites[kind]; const cols = { warm: [255, 190, 100], fire: [255, 130, 50], white: [255, 250, 235], cool: [140, 170, 255], lamp: [255, 205, 120], red: [255, 70, 50], green: [120, 255, 150] }; const c = cols[kind] || [255, 255, 255];
     return (this.lsprites[kind] = Gx.mk(128, 128, (x) => { const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(0.25, `rgba(${c},0.62)`); g.addColorStop(0.6, `rgba(${c},0.2)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); }));
   },
-  /* ---------- terrain (chunked + LRU: the expanded map can never balloon memory) ---------- */
-  trimChunks() { if (this.chunks.size <= 130) return; const arr = [...this.chunks.entries()].sort((a, b) => a[1].u - b[1].u); for (let i = 0; i < arr.length - 96; i++) this.chunks.delete(arr[i][0]); },
+  /* ---------- terrain ---------- */
   chunk(cx, cy) {
-    const k = cx + cy * 64; let c = this.chunks.get(k); if (c) { c.u = ++this._ck; return c.cv; }
-    const cv = Gx.mk(CP, CP, (x) => { for (let ty = 0; ty < CH; ty++) for (let tx = 0; tx < CH; tx++) { const wx = cx * CH + tx, wy = cy * CH + ty; if (!World.inb(wx, wy)) { x.fillStyle = '#1e1812'; x.fillRect(tx * TILE, ty * TILE, TILE, TILE); continue; } this.tile(x, wx, wy, tx * TILE, ty * TILE); } });
-    this.chunks.set(k, { cv, u: ++this._ck }); this.trimChunks(); return cv;
-  },
-  /* build up to `budget` chunks in the ring just outside the view so galloping never hitches on generation */
-  prewarm(cx0, cy0, cx1, cy1) {
-    let budget = 2;
-    for (let r = 1; r <= 2 && budget > 0; r++) {
-      for (let cy = cy0 - r; cy <= cy1 + r && budget > 0; cy++) for (let cx = cx0 - r; cx <= cx1 + r && budget > 0; cx++) {
-        if (cx < 0 || cy < 0 || cx * CH >= MW || cy * CH >= MH) continue;
-        if (!this.chunks.has(cx + cy * 64)) { this.chunk(cx, cy); budget--; }
-      }
-    }
+    const k = cx + cy * 64; let c = this.chunks.get(k); if (c) return c;
+    c = Gx.mk(CP, CP, (x) => { for (let ty = 0; ty < CH; ty++) for (let tx = 0; tx < CH; tx++) { const wx = cx * CH + tx, wy = cy * CH + ty; if (!World.inb(wx, wy)) { x.fillStyle = '#1e1812'; x.fillRect(tx * TILE, ty * TILE, TILE, TILE); continue; } this.tile(x, wx, wy, tx * TILE, ty * TILE); } });
+    this.chunks.set(k, c); return c;
   },
   tile(x, wx, wy, px, py) {
     const kd = World.kind[wy * MW + wx], r = mulberry32((hash2(wx, wy, 41) * 4294967295) | 0), pal = PAL[kd], T = TILE;
     const mac = fbm(wx * 0.033, wy * 0.033, 913, 2) - 0.5; const col = Gx.sh(pal[(r() * pal.length) | 0], mac * (kd === K.CLIFF || kd === K.DEEP ? 0.05 : 0.13));
-    const dryT = World.dry ? World.dry(wx, wy) : 0.5; // biome tint: paler steppe in dry lands, deeper green in the forest
     const nk = (dx, dy) => World.kindAt(wx + dx, wy + dy), N = nk(0, -1), S_ = nk(0, 1), W_ = nk(-1, 0), E_ = nk(1, 0);
     x.fillStyle = col; x.fillRect(px, py, T, T);
     const spk = (n, c, s, a) => { x.fillStyle = c; x.globalAlpha = a || 1; for (let i = 0; i < n; i++) x.fillRect(px + r() * (T - s), py + r() * (T - s), s, s); x.globalAlpha = 1; };
     // soft transitions between ground types
     if (SOFT.has(kd)) { for (const [dx, dy, ex, ey] of [[0, -1, 0.5, 0], [0, 1, 0.5, 1], [-1, 0, 0, 0.5], [1, 0, 1, 0.5], [-1, -1, 0, 0], [1, -1, 1, 0], [-1, 1, 0, 1], [1, 1, 1, 1]]) { const q = nk(dx, dy); if (q === kd || !SOFT.has(q)) continue; if (kd === K.ROAD && q !== K.ROAD) { /* roads stay crisp-ish */ } const cc = PAL[q]; const diag = dx !== 0 && dy !== 0; const n = diag ? 2 : 5; for (let i = 0; i < n; i++) { const bx = px + (dx === 0 ? r() * T : ex * T + (dx < 0 ? 1 : -1) * r() * 5), by = py + (dy === 0 ? r() * T : ey * T + (dy < 0 ? 1 : -1) * r() * 5); x.fillStyle = cc[(r() * cc.length) | 0]; x.globalAlpha = 0.55; x.beginPath(); x.arc(bx, by, 4 + r() * 7.5, 0, TAU); x.fill(); } x.globalAlpha = 1; } }
     switch (kd) {
-      case K.GRASS: { const nBlades = dryT > 0.46 ? 3 : 7; for (let i = 0; i < nBlades; i++) { const bx = px + r() * T, by = py + r() * T, h = 3 + r() * 5; x.strokeStyle = dryT > 0.46 ? (r() < 0.5 ? '#a4a85a' : '#8a9a48') : (r() < 0.5 ? '#86a85a' : '#4f6e30'); x.lineWidth = 1; x.beginPath(); x.moveTo(bx, by); x.lineTo(bx + (r() - 0.5) * 3, by - h); x.stroke(); } if (dryT <= 0.46) spk(2, '#4a6a2c', 3, 0.5); if (r() < 0.07) { x.fillStyle = pick(['#e8d060', '#e8e8e8', '#d8704a', '#a080d8']); x.beginPath(); x.arc(px + r() * T, py + r() * T, 1.5, 0, TAU); x.fill(); } break; }
+      case K.GRASS: { for (let i = 0; i < 7; i++) { const bx = px + r() * T, by = py + r() * T, h = 3 + r() * 5; x.strokeStyle = r() < 0.5 ? '#86a85a' : '#4f6e30'; x.lineWidth = 1; x.beginPath(); x.moveTo(bx, by); x.lineTo(bx + (r() - 0.5) * 3, by - h); x.stroke(); } spk(2, '#4a6a2c', 3, 0.5); if (r() < 0.07) { x.fillStyle = pick(['#e8d060', '#e8e8e8', '#d8704a', '#a080d8']); x.beginPath(); x.arc(px + r() * T, py + r() * T, 1.5, 0, TAU); x.fill(); } break; }
       case K.DIRT: { spk(10, '#7a5a38', 2, 0.5); spk(6, '#b8946a', 2, 0.5); if (r() < 0.25) { x.fillStyle = '#857a6c'; x.beginPath(); x.arc(px + r() * T, py + r() * T, 1.6, 0, TAU); x.fill(); } break; }
       case K.SAND: { x.strokeStyle = 'rgba(160,120,70,0.3)'; x.lineWidth = 1; for (let i = 0; i < 2; i++) { const yy = py + 6 + r() * 20; x.beginPath(); x.moveTo(px, yy); x.quadraticCurveTo(px + 16, yy + (r() - 0.5) * 6, px + T, yy + (r() - 0.5) * 4); x.stroke(); } spk(6, '#efd9a6', 2, 0.5); spk(3, '#a98650', 2, 0.4); break; }
       case K.ROCKY: { for (let i = 0; i < 5; i++) { const bx = px + r() * (T - 6), by = py + r() * (T - 6), s = 2 + r() * 4; x.fillStyle = pick(['#6e6354', '#a39785', '#7a6e5e', '#b0a590']); Gx.poly(x, [[bx, by + s], [bx + s * 0.4, by], [bx + s, by + s * 0.3], [bx + s * 0.8, by + s]]); x.fill(); } break; }
@@ -2038,9 +1885,8 @@ const Rn = {
     const view = { x: camX, y: camY, vw: cam.vw, vh: cam.vh };
     x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#2a2018'; x.fillRect(0, 0, this.cv.width, this.cv.height);
     x.setTransform(S * z, 0, 0, S * z, -camX * S * z, -camY * S * z); x.imageSmoothingEnabled = true;
-    // 1. ground — ring chunks are pre-warmed with a per-frame budget; visible gaps build synchronously
+    // 1. ground
     const cx0 = Math.max(0, Math.floor(camX / CP)), cx1 = Math.floor((camX + cam.vw) / CP), cy0 = Math.max(0, Math.floor(camY / CP)), cy1 = Math.floor((camY + cam.vh) / CP);
-    this.prewarm(cx0, cy0, cx1, cy1);
     for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) { if (cx * CH >= MW || cy * CH >= MH) continue; x.drawImage(this.chunk(cx, cy), cx * CP, cy * CP); }
     // 2. water shimmer
     this.water(x, view, t);
@@ -2107,7 +1953,7 @@ const Rn = {
     if (p.type === 'tumble') { const wob = p.rot || 0; x.save(); x.translate(p.x, p.y); x.rotate(t * 0.4 + p.x); x.globalAlpha = alpha; x.drawImage(s.c, -s.ax, -s.ay + 8); x.restore(); return; }
     if (p.type === 'counter' || p.type === 'shelf') { const rs = rectSprite(p.type, p.w, p.h); x.drawImage(rs.c, p.x - p.w / 2, p.y - p.h / 2 - 6); return; }
     if (alpha < 1) x.globalAlpha = alpha;
-    const sway = (p.type === 'pine' || p.type === 'pine2' || p.type === 'cottonwood' || p.type === 'juniper' || p.type === 'oak' || p.type === 'bush' || p.type === 'sage' || p.type === 'reed' || p.type === 'yucca' || p.type === 'grasstuft' || p.type === 'flower' || p.type === 'saguaro' || p.type === 'cactus') ? Math.sin(t * 0.9 + p.x * 0.013) * (0.006 + (W.wind || 0) * 0.02) : 0;
+    const sway = (p.type === 'pine' || p.type === 'oak' || p.type === 'bush' || p.type === 'flower' || p.type === 'saguaro' || p.type === 'cactus') ? Math.sin(t * 0.9 + p.x * 0.013) * (0.006 + (W.wind || 0) * 0.02) : 0;
     if (p.rot && (p.type === 'log' || p.type === 'wagon')) { x.save(); x.translate(p.x, p.y); x.rotate(p.rot); x.scale(sc, sc); x.drawImage(s.c, -s.ax, -s.ay); x.restore(); }
     else if (sway || sc !== 1) { x.save(); x.translate(p.x, p.y); if (sway) x.rotate(sway); x.scale(sc, sc); if (p.dmg) x.globalAlpha = alpha * 0.85; x.drawImage(s.c, -s.ax, -s.ay); x.restore(); }
     else x.drawImage(s.c, p.x - s.ax, p.y - s.ay);
@@ -2172,9 +2018,9 @@ const Rn = {
     if ((G.lowHp || 0) > 0.01) { x.globalCompositeOperation = 'saturation'; x.globalAlpha = G.lowHp * 0.6; x.fillStyle = '#808080'; x.fillRect(0, 0, VW, VH); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
     // lightning flash
     if (W.flash > 0.02) { x.globalAlpha = clamp(W.flash, 0, 1) * 0.5; x.fillStyle = '#e8eeff'; x.fillRect(0, 0, VW, VH); x.globalAlpha = 1; }
-    // vignette + grain (grain is the priciest full-screen pass — skip it on reduced quality / power saver)
+    // vignette + grain
     x.globalAlpha = 0.9 + 0.1 * (W.dust || 0); x.drawImage(this.vig, 0, 0); x.globalAlpha = 1;
-    if ((window.DH ? DH.quality : 1) > 0.92 && !DH.powerSave) { x.globalCompositeOperation = 'overlay'; x.globalAlpha = 0.07; x.drawImage(this.grain, -((t * 91) % 128), -((t * 53) % 128), 128 * 11, 128 * 7); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
+    x.globalCompositeOperation = 'overlay'; x.globalAlpha = 0.07; x.drawImage(this.grain, -((t * 91) % 128), -((t * 53) % 128), 128 * 11, 128 * 7); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
     // letterbox for cutscenes
     if ((G.letterbox || 0) > 0.01) { const h = 70 * G.letterbox; x.fillStyle = '#000'; x.fillRect(0, 0, VW, h); x.fillRect(0, VH - h, VW, h); }
   },
@@ -2202,17 +2048,15 @@ const ITEMS = {
   meat: { name: 'گوشت خام', icon: 'meat', desc: 'روی آتش بپز', price: 0, sell: 1.5 },
   dynamite: { name: 'دینامیت', icon: 'dyn', desc: 'پرتاب‌کردنی؛ قفل‌ها و دیوارها را می‌ترکاند', price: 9, sell: 3 },
   pelt_deer: { name: 'پوست گوزن', icon: 'pelt', price: 0, sell: 7 }, pelt_rabbit: { name: 'پوست خرگوش', icon: 'pelt', price: 0, sell: 1.5 }, pelt_coyote: { name: 'پوست کایوت', icon: 'pelt', price: 0, sell: 5 },
-  pelt_wolf: { name: 'پوست گرگ', icon: 'pelt', price: 0, sell: 11 }, pelt_bear: { name: 'پوست خرس', icon: 'pelt', price: 0, sell: 26 }, pelt_cow: { name: 'چرم گاو', icon: 'pelt', price: 0, sell: 9 }, pelt_sheep: { name: 'پوست گوسفند', icon: 'pelt', price: 0, sell: 5 }, venom: { name: 'زهر مار', icon: 'tonic', price: 0, sell: 3 },
+  pelt_wolf: { name: 'پوست گرگ', icon: 'pelt', price: 0, sell: 11 }, pelt_bear: { name: 'پوست خرس', icon: 'pelt', price: 0, sell: 26 }, pelt_cow: { name: 'چرم گاو', icon: 'pelt', price: 0, sell: 9 }, venom: { name: 'زهر مار', icon: 'tonic', price: 0, sell: 3 },
   watch: { name: 'ساعت جیبی', icon: 'key', price: 0, sell: 14 }, ring: { name: 'انگشتر', icon: 'coin', price: 0, sell: 9 }, nugget: { name: 'قطعه‌ی طلا', icon: 'coin', price: 0, sell: 22 },
   deeds: { name: 'سند زمین‌ها', icon: 'doc', price: 0, sell: 0, quest: 1 }, ledger: { name: 'دفتر حساب معدن', icon: 'doc', price: 0, sell: 0, quest: 1 }, telegram: { name: 'تلگراف رهگیری‌شده', icon: 'doc', price: 0, sell: 0, quest: 1 }, note: { name: 'یادداشت مهرشده', icon: 'doc', price: 0, sell: 0, quest: 1 }, mineKey: { name: 'کلید دفتر معدن', icon: 'key', price: 0, sell: 0, quest: 1 }, strongbox: { name: 'صندوق فولادی', icon: 'box', price: 0, sell: 0, quest: 1 }, payroll: { name: 'کیسه‌ی حقوق', icon: 'cash', price: 0, sell: 0, quest: 1 }, sheriffStar: { name: 'ستاره‌ی کلانتر', icon: 'star', price: 0, sell: 0, quest: 1 },
 };
 const SPECIES = {
-  /* v3: calm western wildlife — slow wander speeds, species roam radius, chase = sprint multiplier for predators */
-  deer: { name: 'گوزن', hp: 55, r: 11, speed: 34, flee: 175, fear: 260, roam: 300, chase: 2.2, pelt: 'pelt_deer', meat: 2 }, rabbit: { name: 'خرگوش', hp: 12, r: 6, speed: 24, flee: 165, fear: 170, roam: 200, chase: 0, pelt: 'pelt_rabbit', meat: 1 },
-  coyote: { name: 'کایوت', hp: 40, r: 8, speed: 48, flee: 190, fear: 0, roam: 380, chase: 1.5, pelt: 'pelt_coyote', meat: 1, pred: 1, dmg: 9 }, wolf: { name: 'گرگ', hp: 70, r: 9, speed: 55, flee: 200, fear: 0, roam: 420, chase: 1.6, pelt: 'pelt_wolf', meat: 1, pred: 1, dmg: 14 },
-  bear: { name: 'خرس', hp: 220, r: 15, speed: 40, flee: 170, fear: 0, roam: 300, chase: 1.35, pelt: 'pelt_bear', meat: 3, pred: 1, dmg: 28 }, cow: { name: 'گاو', hp: 90, r: 14, speed: 19, flee: 65, fear: 0, roam: 110, chase: 0, pelt: 'pelt_cow', meat: 3, livestock: 1 },
-  sheep: { name: 'گوسفند کوهی', hp: 45, r: 10, speed: 22, flee: 95, fear: 0, roam: 130, chase: 0, pelt: 'pelt_sheep', meat: 2, livestock: 1 },
-  rattler: { name: 'مار زنگی', hp: 10, r: 5, speed: 9, flee: 70, fear: 0, roam: 60, chase: 1.1, pelt: 'venom', meat: 0, pred: 1, dmg: 6, venom: 1 },
+  deer: { name: 'گوزن', hp: 55, r: 11, speed: 70, flee: 215, fear: 260, pelt: 'pelt_deer', meat: 2 }, rabbit: { name: 'خرگوش', hp: 12, r: 6, speed: 60, flee: 190, fear: 170, pelt: 'pelt_rabbit', meat: 1 },
+  coyote: { name: 'کایوت', hp: 40, r: 8, speed: 90, flee: 190, fear: 0, pelt: 'pelt_coyote', meat: 1, pred: 1, dmg: 9 }, wolf: { name: 'گرگ', hp: 70, r: 9, speed: 100, flee: 200, fear: 0, pelt: 'pelt_wolf', meat: 1, pred: 1, dmg: 14 },
+  bear: { name: 'خرس', hp: 220, r: 15, speed: 80, flee: 170, fear: 0, pelt: 'pelt_bear', meat: 3, pred: 1, dmg: 28 }, cow: { name: 'گاو', hp: 90, r: 14, speed: 40, flee: 80, fear: 0, pelt: 'pelt_cow', meat: 3, livestock: 1 },
+  rattler: { name: 'مار زنگی', hp: 10, r: 5, speed: 45, flee: 80, fear: 0, pelt: 'venom', meat: 0, pred: 1, dmg: 6, venom: 1 },
 };
 const LINES = {
   greet: ['روز بخیر، غریبه.', 'هوا امروز پر از خاک است.', 'مراقب خودت باش.', 'تو اهل اینجا نیستی، نه؟', 'خدا به همراهت.', 'قطار امروز دیر کرده.', 'شنیده‌ام وین دوباره زمین می‌خرد.', 'رودخانه این روزها بوی بد می‌دهد.', 'اسب قشنگی داری.'],
@@ -2459,21 +2303,8 @@ function horseControl(h, mx, my, shift, dt) {
   if (gait === 'gallop') h.stamina -= 17 * dt; else h.stamina = Math.min(100, h.stamina + (moving ? 8 : 22) * dt); if (h.stamina < 1 && target > 210) target = 205;
   if (moving) { const want = Math.atan2(my, mx); const turn = lerp(5.6, 2.4, clamp(h.speed / 345, 0, 1)); h.ang = rotToward(h.ang, want, turn * dt); const align = Math.cos(angDiff(h.ang, want)); target *= clamp(0.35 + align * 0.75, 0.25, 1); }
   const acc = target > h.speed ? 260 : 420; h.speed += clamp(target - h.speed, -acc * dt, acc * dt); h.speed *= World.speedAt(h.x, h.y) < 1 ? 1 - (1 - World.speedAt(h.x, h.y)) * dt * 4 : 1;
-  /* sub-stepped movement: at gallop the horse never skips over a thin trunk box, and collisions stay exact */
-  const ox = h.x, oy = h.y; const steps = Math.max(1, Math.ceil((h.speed * dt) / 5));
-  for (let s2 = 0; s2 < steps; s2++) moveE(h, Math.cos(h.ang) * h.speed * dt / steps, Math.sin(h.ang) * h.speed * dt / steps);
-  const moved = Math.hypot(h.x - ox, h.y - oy), exp = h.speed * dt;
-  if (exp > 0.4 && moved < exp * 0.4) {
-    // blocked: bleed speed instead of dead-stopping; rear only from a real gallop impact
-    h.blockT = (h.blockT || 0) + dt; h.speed *= 0.72;
-    if (h.speed > 230) { h.rear = 0.45; Parts.dust(h.x, h.y, 4); shake(2); }
-    // slide assist: after a beat, nose the horse along the obstacle instead of grinding into it
-    if (h.blockT > 0.22 && !(h.slideT > 0)) {
-      const side = World.blockedAt(h.x + Math.cos(h.ang + Math.PI / 2) * 26, h.y + Math.sin(h.ang + Math.PI / 2) * 26, h.r) ? -1 : 1;
-      h.slideDir = side; h.slideT = 0.38; h.blockT = 0;
-    }
-  } else h.blockT = Math.max(0, (h.blockT || 0) - dt * 2);
-  if (h.slideT > 0) { h.slideT -= dt; h.ang += (h.slideDir || 1) * 1.5 * dt; }
+  const ox = h.x, oy = h.y; moveE(h, Math.cos(h.ang) * h.speed * dt, Math.sin(h.ang) * h.speed * dt); const moved = Math.hypot(h.x - ox, h.y - oy), exp = h.speed * dt;
+  if (exp > 0.5 && moved < exp * 0.45 && h.speed > 120) { h.speed *= 0.5; h.rear = 0.5; Parts.dust(h.x, h.y, 4); shake(2); }
   h.gait += h.speed * dt * 0.052; h.stepT = (h.stepT || 0) - dt; if (h.speed > 30 && h.stepT <= 0) { h.stepT = clamp(70 / Math.max(h.speed, 1), 0.1, 0.5); Sound.play('hoof', h.x, h.y, 0.55); if (h.speed > 200) Parts.dust(h.x - Math.cos(h.ang) * 14, h.y - Math.sin(h.ang) * 14, 1, { v: 20, col: 'rgba(190,160,115,0.5)' }); }
   P.x = h.x; P.y = h.y; P.vx = Math.cos(h.ang) * h.speed; P.vy = Math.sin(h.ang) * h.speed; P.stamina = h.stamina;
   // trample pedestrians
@@ -2605,68 +2436,26 @@ function allyAI(e, dt) {
   if (e.hold) { }
 }
 
-/* ---------------- animals (v3: calm, believable movement) ---------------- */
+/* ---------------- animals ---------------- */
 function animalAI(a, dt) {
   const d = a.speciesDef, P = G.player; if (a.dead) return; a.hurt = Math.max(0, a.hurt - dt * 1.6); a.st += dt; const pd = pdist(a); const night = nightness(G.time) > 0.45;
   if (a.kx || a.ky) { moveE(a, a.kx * dt * 5, a.ky * dt * 5); a.kx *= 0.8; a.ky *= 0.8; }
-  // gentle herd separation — low frequency, small nudges, same species only
-  a.sepT = (a.sepT == null ? Math.random() * 0.5 : a.sepT) - dt;
-  if (a.sepT <= 0) { a.sepT = 0.5 + Math.random() * 0.3; for (const o of G.ents) { if (o === a || o.dead || o.type !== 'animal' || o.species !== a.species) continue; const dx = a.x - o.x, dy = a.y - o.y; const dd = dx * dx + dy * dy; if (dd > 1 && dd < 1156) { const l = Math.sqrt(dd), f = (34 - l) / 34 * 9; a.x += (dx / l) * f; a.y += (dy / l) * f; } } }
   if (d.pred) {
     const aggro = a.state === 'hunt' || (pd < (a.species === 'bear' ? 190 : a.species === 'rattler' ? 70 : 280) && (a.species === 'bear' || night || a.species === 'rattler' || a.species === 'wolf') && !P.dead && !(World.poiNear(P.x, P.y) === POI.town));
-    if (aggro && pd < 640 && !(a.chaseCd > 0)) {
-      if (a.state !== 'hunt') { a.state = 'hunt'; a.chaseT = 0; }
-      a.chaseT += dt; const ta = Math.atan2(P.y - a.y, P.x - a.x); a.ang = rotToward(a.ang, ta, 3.2 * dt);
-      const sp = d.speed * (d.chase || 1.3) * clamp(0.45 + a.chaseT * 0.8, 0.45, 1); // gradual acceleration into the chase
-      a.speed += clamp(sp - a.speed, -180 * dt, 130 * dt);
-      const ox = a.x, oy = a.y; moveE(a, Math.cos(a.ang) * a.speed * dt, Math.sin(a.ang) * a.speed * dt);
-      if (Math.hypot(a.x - ox, a.y - oy) < a.speed * dt * 0.35) { a.chaseCd = 3; a.state = 'idle'; a.st = 0; a.speed = 0; return; }
-      a.gait += a.speed * dt * 0.09;
-      if (pd < a.r + 15 && (a.biteT = (a.biteT || 0) - dt) <= 0) { a.biteT = a.species === 'rattler' ? 1.4 : 0.9; const tg = P.mounted ? P.horse : P; if (P.invuln <= 0) { damageEnt(tg, d.dmg, a, { ang: ta }); if (d.venom) { P.venom = 6; toast('مار زنگی تو را زد!', 'bad'); } Sound.play(a.species === 'bear' ? 'growl' : 'hurt', a.x, a.y); } }
-      if (a.chaseT > 7) { a.chaseCd = 9; a.state = 'idle'; a.st = 0; a.speed = 0; } // predators tire and give up
-      return;
-    }
+    if (aggro && pd < 640) { a.state = 'hunt'; const ta = Math.atan2(P.y - a.y, P.x - a.x); a.ang = rotToward(a.ang, ta, 7 * dt); const sp = d.speed * (a.species === 'rattler' ? 1.2 : 2.0); a.speed = sp; moveE(a, Math.cos(a.ang) * sp * dt, Math.sin(a.ang) * sp * dt); a.gait += sp * dt * 0.09; if (pd < a.r + 15 && (a.biteT = (a.biteT || 0) - dt) <= 0) { a.biteT = a.species === 'rattler' ? 1.4 : 0.9; const tg = P.mounted ? P.horse : P; if (P.invuln <= 0) { damageEnt(tg, d.dmg, a, { ang: ta }); if (d.venom) { P.venom = 6; toast('مار زنگی تو را زد!', 'bad'); } Sound.play(a.species === 'bear' ? 'growl' : 'hurt', a.x, a.y); } } return; }
     if (a.state === 'hunt') { a.state = 'idle'; }
-    a.chaseCd = Math.max(0, (a.chaseCd || 0) - dt);
   }
-  if (a.state === 'flee') { a.fleeT -= dt; const src = a.scare || P; const aa = Math.atan2(a.y - src.y, a.x - src.x) + Math.sin(a.st * 3) * 0.3; a.ang = rotToward(a.ang, aa, 5 * dt); const sp = d.flee * clamp(0.55 + a.st * 1.4, 0.55, 1); a.speed += clamp(sp - a.speed, -220 * dt, 260 * dt); const ox = a.x, oy = a.y; moveE(a, Math.cos(a.ang) * a.speed * dt, Math.sin(a.ang) * a.speed * dt); if (Math.hypot(a.x - ox, a.y - oy) < a.speed * dt * 0.3) a.ang += 1.2; a.gait += a.speed * dt * 0.09; if (a.fleeT <= 0 && pd > 320) { a.state = 'idle'; a.st = 0; a.grazeT = rnd(2, 5); } return; }
+  if (a.state === 'flee') { a.fleeT -= dt; const src = a.scare || P; const aa = Math.atan2(a.y - src.y, a.x - src.x) + Math.sin(a.st * 3) * 0.4; a.ang = rotToward(a.ang, aa, 8 * dt); a.speed = d.flee; const ox = a.x, oy = a.y; moveE(a, Math.cos(a.ang) * d.flee * dt, Math.sin(a.ang) * d.flee * dt); if (Math.hypot(a.x - ox, a.y - oy) < d.flee * dt * 0.3) a.ang += 1.2; a.gait += d.flee * dt * 0.09; if (a.fleeT <= 0 && pd > 320) { a.state = 'idle'; a.st = 0; } return; }
   if (!d.pred && !d.livestock && pd < d.fear && !P.dead && (P.weaponDrawn || P.sprint || P.mounted && Math.hypot(P.vx, P.vy) > 100 || pd < d.fear * 0.55)) { a.state = 'flee'; a.fleeT = 4; a.scare = P; return; }
-  if (a.state === 'idle' || a.state === 'graze') {
-    a.speed += clamp(0 - a.speed, -160 * dt, 100 * dt); if (a.speed < 2) a.speed = 0;
-    if (a.st > (a.grazeT || 3)) {
-      a.st = 0; const r = Math.random();
-      if (r < 0.5) { a.state = 'graze'; a.grazeT = rnd(3.5, 9); }             // head down, relaxed pause
-      else if (r < 0.88 || d.livestock) { a.state = 'wander'; a.dest = null; } // a short stroll
-      else { a.grazeT = rnd(2, 5); }                                          // stand and look around
-    }
-    return;
-  }
-  if (a.state === 'wander') {
-    if (!a.dest) { const rr = d.roam || 200; let tries = 0; do { a.dest = { x: a.home.x + rnd(-rr, rr), y: a.home.y + rnd(-rr, rr) }; tries++; } while (tries < 4 && (World.blockedAt(a.dest.x, a.dest.y, a.r + 2) || World.kindPx(a.dest.x, a.dest.y) === K.ROAD)); }
-    const dx = a.dest.x - a.x, dy = a.dest.y - a.y, dd = Math.hypot(dx, dy);
-    if (dd < 14 || a.st > 14) { a.state = 'graze'; a.st = 0; a.grazeT = rnd(3, 8); a.speed = 0; return; }
-    a.ang = rotToward(a.ang, Math.atan2(dy, dx), 2.4 * dt);                    // no sharp turns
-    const burst = (a.species === 'rabbit' && Math.sin(a.st * 2.4) > 0.2) ? 1.7 : 1; // rabbits hop in bursts
-    const sp = d.speed * burst;
-    a.speed += clamp(sp - a.speed, -120 * dt, 90 * dt);                        // gradual accel/decel
-    const ox = a.x, oy = a.y; moveE(a, Math.cos(a.ang) * a.speed * dt, Math.sin(a.ang) * a.speed * dt);
-    if (Math.hypot(a.x - ox, a.y - oy) < a.speed * dt * 0.4) { a.state = 'graze'; a.st = 0; a.grazeT = rnd(2, 6); a.speed = 0; return; }
-    a.gait += a.speed * dt * 0.09;
-  }
+  if (a.state === 'idle') { a.speed = 0; if (a.st > rnd(2, 6)) { a.state = 'wander'; a.st = 0; a.dest = { x: a.home.x + rnd(-160, 160), y: a.home.y + rnd(-160, 160) }; } return; }
+  if (a.state === 'wander') { const dx = a.dest.x - a.x, dy = a.dest.y - a.y; if (Math.hypot(dx, dy) < 12 || a.st > 9) { a.state = 'idle'; a.st = 0; a.speed = 0; return; } a.ang = rotToward(a.ang, Math.atan2(dy, dx), 4 * dt); a.speed = d.speed * 0.5; const ox = a.x, oy = a.y; moveE(a, Math.cos(a.ang) * a.speed * dt, Math.sin(a.ang) * a.speed * dt); if (Math.hypot(a.x - ox, a.y - oy) < 0.1) { a.state = 'idle'; a.st = 0; } a.gait += a.speed * dt * 0.09; }
 }
 
 /* ---------------- horses ---------------- */
 function horseAI(h, dt) {
   h.hurt = Math.max(0, h.hurt - dt); h.rear = Math.max(0, (h.rear || 0) - dt * 1.4); if (h.dead || h.rider) return; const P = G.player;
   if (h.state === 'come') { const d = dist(h.x, h.y, P.x, P.y); if (d < 48) { h.state = 'idle'; h.speed = 0; return; } const sp = d > 200 ? 300 : 160; h.stamina = Math.min(100, h.stamina + 5 * dt); steerHorse(h, P.x, P.y, sp, dt); }
-  else {
-    h.speed *= 0.85; if (h.speed < 5) h.speed = 0; h.stamina = Math.min(100, h.stamina + 20 * dt); if (h.speed > 0) moveE(h, Math.cos(h.ang) * h.speed * dt, Math.sin(h.ang) * h.speed * dt);
-    h.st += dt;
-    if (h.wild) { // wild herd grazes its home prairie: calm slow strolls, never far
-      if (h.st > (h.wanderT || 5)) { h.st = 0; h.wanderT = rnd(4, 10); const pos = World.randomNear(h.home.x, h.home.y, 40, 170, h.r + 2); h.dest = pos && !World.blockedAt(pos.x, pos.y, h.r) ? pos : null; }
-      if (h.dest) { const dx = h.dest.x - h.x, dy = h.dest.y - h.y; if (Math.hypot(dx, dy) < 16) { h.dest = null; h.speed = 0; } else { h.ang = rotToward(h.ang, Math.atan2(dy, dx), 2 * dt); h.speed += clamp(26 - h.speed, -80 * dt, 40 * dt); moveE(h, Math.cos(h.ang) * h.speed * dt, Math.sin(h.ang) * h.speed * dt); h.gait += h.speed * dt * 0.052; } }
-    } else if (h.st > 6 && Math.random() < 0.01) { h.ang += rnd(-0.5, 0.5); h.st = 0; }
-  }
+  else { h.speed *= 0.85; if (h.speed < 5) h.speed = 0; h.stamina = Math.min(100, h.stamina + 20 * dt); if (h.speed > 0) moveE(h, Math.cos(h.ang) * h.speed * dt, Math.sin(h.ang) * h.speed * dt); h.st += dt; if (h.st > 6 && Math.random() < 0.01) { h.ang += rnd(-0.5, 0.5); h.st = 0; } }
 }
 function steerHorse(h, tx, ty, spd, dt) { const a = Math.atan2(ty - h.y, tx - h.x); let wx = tx, wy = ty; if (!World.clearWalk(h.x, h.y, tx, ty, h.r)) { h.repath = (h.repath || 0) - dt; if (!h.path || h.repath <= 0) { if (G.pathBudget > 0) { G.pathBudget--; h.path = World.findPath(h.x, h.y, tx, ty, { maxIter: 4000 }); h.pi = 0; h.repath = 1.0; } } if (h.path && h.pi < h.path.length) { const wp = h.path[h.pi]; wx = wp.x; wy = wp.y; if (dist(h.x, h.y, wx, wy) < 18) h.pi++; } } const aa = Math.atan2(wy - h.y, wx - h.x); h.ang = rotToward(h.ang, aa, 6 * dt); h.speed += clamp(spd - h.speed, -300 * dt, 300 * dt); moveE(h, Math.cos(h.ang) * h.speed * dt, Math.sin(h.ang) * h.speed * dt); h.gait += h.speed * dt * 0.052; h.stepT = (h.stepT || 0) - dt; if (h.speed > 30 && h.stepT <= 0) { h.stepT = clamp(70 / h.speed, 0.1, 0.5); Sound.play('hoof', h.x, h.y, 0.5); } }
 
@@ -2697,19 +2486,16 @@ function spawnPersistent() {
   if (!G.flags.dead_dep2) { const d = mkPerson({ x: 104 * TILE, y: 52.4 * TILE, role: 'law', faction: 'law', name: 'معاون هارلن', outfit: { ...OUT.deputy, hatCol: '#6a5a40', shirt: '#a8a088' }, weapon: 'rifle', hp: 80, speed: 56, npcId: 'dep2', rangeMin: 200, rangeMax: 440, acc: 0.05, react: 0.5 }); d.dest = pick(tp); }
   const names = ['اسمیت', 'کلارا', 'جِس', 'نِد', 'ماگی', 'ابنِزر', 'لوسی', 'تام', 'هنری', 'روزا', 'کالب', 'فِی'];
   for (let i = 0; i < 12; i++) { if (G.flags['dead_civ' + i]) continue; const woman = i % 3 === 1; const home = houses[i % houses.length]; const pos = pick(tp) || { x: 93 * TILE, y: 52 * TILE }; const c = mkPerson({ x: pos.x + rnd(-10, 10), y: pos.y + rnd(-6, 6), role: 'civ', faction: 'civ', name: names[i], npcId: 'civ' + i, outfit: randOutfit(woman ? 'woman' : 'man', mulberry32(i * 31 + 5)), hp: 40, speed: 48 + Math.random() * 14, idleFor: rnd(0, 5) }); c.home = home ? { door: { x: home.doorPx.x, y: home.doorPx.y + (home.door === 'N' ? -22 : 22) } } : null; c.wanderPts = null; if (i % 4 === 3) { c.stationary = true; } }
-  // ranch livestock + horse — a mixed herd (cows + sheep) that grazes calmly
-  for (let i = 0; i < 5; i++) { const a = mkAnimal('cow', (36 + rnd(-2, 8)) * TILE, (70 + rnd(-1, 6)) * TILE); a.home = { x: 40 * TILE, y: 72 * TILE }; a.persist = true; }
-  for (let i = 0; i < 4; i++) { const a = mkAnimal('sheep', (37 + rnd(-2, 7)) * TILE, (71 + rnd(-1, 5)) * TILE); a.home = { x: 40 * TILE, y: 72 * TILE }; a.persist = true; }
-  // wild horse herd roaming the southern prairie
-  { const wp = POI.wildhorses; for (let i = 0; i < 5; i++) { const pos = World.randomNear(wp.x * TILE, wp.y * TILE, 40, 200, 12); if (!pos) continue; const h = mkHorse({ x: pos.x, y: pos.y, coat: pick(['bay', 'black', 'palomino', 'grey', 'chestnut']), name: 'وحشی', wild: true }); h.home = { x: wp.x * TILE, y: wp.y * TILE }; } }
+  // ranch livestock + horse
+  for (let i = 0; i < 7; i++) { const a = mkAnimal('cow', (36 + rnd(-2, 8)) * TILE, (70 + rnd(-1, 6)) * TILE); a.home = { x: 40 * TILE, y: 72 * TILE }; a.persist = true; }
 }
 function ensureHorse() { const P = G.player; if (P.horse && !P.horse.dead) return P.horse; const sp = World.spawn.horse; const h = mkHorse({ x: sp.x, y: sp.y, coat: 'bay', name: 'شفق' }); P.horse = h; h.owner = P; return h; }
 
 /* animals spawner (ring around the player) */
 function spawnAnimals(dt) {
   G.animT = (G.animT || 0) - dt; if (G.animT > 0) return; G.animT = 1.4; const P = G.player; const poi = World.poiNear(P.x, P.y); if (poi === POI.town || poi === POI.station || P.dead) return;
-  const tx = Math.floor(P.x / TILE), ty = Math.floor(P.y / TILE), d = World.dry(tx, ty), night = nightness(G.time) > 0.45, forest = d < 0.31, badlands = d > 0.62; let want;
-  if (forest) want = { deer: 5, rabbit: 4, wolf: night ? 2 : 0, bear: 1 }; else if (badlands) want = { sheep: 3, coyote: night ? 2 : 0, rattler: 2, rabbit: 1 }; else if (d < 0.5) want = { deer: 3, rabbit: 3, sheep: 2, coyote: night ? 2 : 0 }; else want = { sheep: 2, rabbit: 1, coyote: 2, rattler: 2 };
+  const tx = Math.floor(P.x / TILE), ty = Math.floor(P.y / TILE), d = World.dry(tx, ty), night = nightness(G.time) > 0.45, forest = tx < 56 && ty < 48; let want;
+  if (forest) want = { deer: 4, rabbit: 4, wolf: night ? 3 : 0, bear: 1, coyote: 0, rattler: 0 }; else if (d < 0.5) want = { deer: 2, rabbit: 3, wolf: 0, bear: 0, coyote: night ? 2 : 0, rattler: 0 }; else want = { deer: 0, rabbit: 1, wolf: 0, bear: 0, coyote: 2, rattler: 2 };
   const count = {}; for (const a of G.ents) if (a.type === 'animal' && !a.dead && !a.persist) { count[a.species] = (count[a.species] || 0) + 1; if (dist(a.x, a.y, P.x, P.y) > 1500) { a.gone = true; } }
   for (let i = G.ents.length - 1; i >= 0; i--) if (G.ents[i].gone) G.ents.splice(i, 1);
   for (const sp in want) { if ((count[sp] || 0) >= want[sp]) continue; if (Math.random() > 0.5) continue; const pos = World.randomNear(P.x, P.y, 620, 980, 12); if (!pos) continue; const k = World.kindPx(pos.x, pos.y); if (k === K.ROAD || k === K.PLANK || k === K.FLOOR || k === K.TRACK || World.poiNear(pos.x, pos.y) === POI.town) continue; const a = mkAnimal(sp, pos.x, pos.y); if (sp === 'wolf' || sp === 'coyote') { for (let j = 0; j < rint(0, 1); j++) { const b = World.randomNear(pos.x, pos.y, 20, 60, 10); if (b) mkAnimal(sp, b.x, b.y); } } }
@@ -3433,9 +3219,9 @@ G.drawWorldUI = function (x, view, t) {
    DUSTY HOLLOW — menus: panels, title, pause, settings, map,
    satchel/journal, shops, sleep, bounty board, death, ending
    ============================================================ */
-UI.prefs = { master: 0.85, music: 0.45, sfx: 0.9, amb: 0.6, mute: false, shake: 1, diff: 1, quality: 1, autoQ: true, psave: false };
+UI.prefs = { master: 0.85, music: 0.45, sfx: 0.9, amb: 0.6, mute: false, shake: 1, diff: 1, quality: 1 };
 UI.loadPrefs = function () { Object.assign(this.prefs, Save.getPrefs() || {}); this.applyPrefs(); };
-UI.applyPrefs = function () { const p = this.prefs; for (const k of ['master', 'music', 'sfx', 'amb']) Sound.setVol(k, p[k]); Sound.setMuted(!!p.mute); G.shakeMul = p.shake; G.difficulty = p.diff; if (window.DH && DH.setQuality) { DH.qTarget = p.quality; DH.autoQ = p.autoQ !== false; DH.powerSave = !!p.psave; DH.setQuality(DH.autoQ ? DH.quality : p.quality); } };
+UI.applyPrefs = function () { const p = this.prefs; for (const k of ['master', 'music', 'sfx', 'amb']) Sound.setVol(k, p[k]); Sound.setMuted(!!p.mute); G.shakeMul = p.shake; G.difficulty = p.diff; if (window.DH && DH.setQuality) DH.setQuality(p.quality); };
 UI.savePrefs = function () { Save.setPrefs(this.prefs); };
 
 UI.panel = function (name, node, opt) {
@@ -3479,8 +3265,6 @@ UI.settings = function () {
   const sel = (lab, key, opts) => { const d = dom('div', 'sl', `<label>${lab}</label>`, p); const s = dom('select', null, opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join(''), d); s.value = P[key]; s.addEventListener('change', () => { P[key] = +s.value; UI.applyPrefs(); UI.savePrefs(); }); };
   sel('سختی', 'diff', [[0.7, 'آسان'], [1, 'معمولی'], [1.4, 'سخت']]); sel('کیفیت تصویر', 'quality', [[0.6, 'کم (سریع)'], [0.85, 'متوسط'], [1, 'بالا']]);
   const d = dom('div', 'sl', '<label>بی‌صدا</label>', p); const c = dom('input', null, null, d); c.type = 'checkbox'; c.checked = P.mute; c.addEventListener('change', () => { P.mute = c.checked; UI.applyPrefs(); UI.savePrefs(); });
-  const chk = (lab, key) => { const d2 = dom('div', 'sl', `<label>${lab}</label>`, p); const c2 = dom('input', null, null, d2); c2.type = 'checkbox'; c2.checked = P[key]; c2.addEventListener('change', () => { P[key] = c2.checked; UI.applyPrefs(); UI.savePrefs(); }); };
-  chk('بهینه‌سازی خودکار کیفیت (کاهش خودکار در افت فریم)', 'autoQ'); chk('حالت کم‌مصرف لپ‌تاپ (۳۰ فریم، کمتر گرم می‌شود)', 'psave');
   this.panel('settings', p);
 };
 UI.controls = function () {
@@ -3668,7 +3452,7 @@ const TouchCtl = (() => {
 /* ============================================================
    DUSTY HOLLOW — boot, main loop, test API
    ============================================================ */
-const DH = { cam: G.cam, errors: [], booted: false, k: 1, quality: 1, qTarget: 1, autoQ: true, powerSave: false, frames: 0, fps: 60, fpsAcc: 0, fpsN: 0, manual: false };
+const DH = { cam: G.cam, errors: [], booted: false, k: 1, quality: 1, frames: 0, fps: 60, fpsAcc: 0, fpsN: 0, manual: false };
 window.DH = DH;
 window.addEventListener('error', (e) => { DH.errors.push(String(e.message) + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno); });
 window.addEventListener('unhandledrejection', (e) => { DH.errors.push('promise: ' + (e.reason && e.reason.message || e.reason)); });
@@ -3678,8 +3462,7 @@ DH.fit = function () {
   const k = Math.min(innerWidth / VW, innerHeight / VH); DH.k = k; el('stage').style.transform = `scale(${k})`; DH.applyScale();
 };
 DH.applyScale = function () {
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // 1.5 cap: dpr 2 quadruples fill cost for a barely visible gain
-  const S = clamp(DH.k * dpr * DH.quality, 0.5, 1.5); const key = Math.round(S * 100); if (DH._sk === key) return; DH._sk = key; Rn.setScale(S);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2); const S = clamp(DH.k * dpr * DH.quality, 0.5, 1.5); const key = Math.round(S * 100); if (DH._sk === key) return; DH._sk = key; Rn.setScale(S);
 };
 DH.setQuality = function (q) { DH.quality = q; if (DH.booted) DH.applyScale(); };
 
@@ -3728,12 +3511,7 @@ let _last = 0;
 function loop(ts) {
   requestAnimationFrame(loop); if (DH.manual) return; const dt = Math.min(0.1, Math.max(0.001, (ts - _last) / 1000)); _last = ts;
   DH.fpsAcc += dt; DH.fpsN++; if (DH.fpsAcc >= 1) { DH.fps = DH.fpsN / DH.fpsAcc; DH.fpsAcc = 0; DH.fpsN = 0; }
-  // adaptive quality: on sustained low fps step the render scale down, step back up when headroom returns
-  if (DH.autoQ !== false) { DH.qT = (DH.qT || 0) + dt; if (DH.qT >= 2.5) { DH.qT = 0; const f = DH.fps, tgt = DH.qTarget || 1;
-    if (f < 42 && DH.quality > 0.58) DH.setQuality(Math.max(0.58, DH.quality - 0.14));
-    else if (f > 57 && DH.quality < tgt) DH.setQuality(Math.min(tgt, DH.quality + 0.14)); } }
-  try { DH.tick(dt); // power saver: simulation runs every frame, rendering capped at 30 fps
-    if (!DH.powerSave || (DH._acc = (DH._acc || 0) + dt) >= 1 / 30) { DH._acc = DH.powerSave ? DH._acc % (1 / 30) : 0; DH.render(); DH.frames++; } } catch (e) { DH.errors.push((e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : String(e))); if (DH.errors.length > 40) DH.errors.shift(); }
+  try { DH.tick(dt); DH.render(); DH.frames++; } catch (e) { DH.errors.push((e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : String(e))); if (DH.errors.length > 40) DH.errors.shift(); }
 }
 
 DH.boot = function () {
