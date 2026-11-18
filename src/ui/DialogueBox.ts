@@ -26,6 +26,8 @@ export class DialogueBox {
   private lastCharAt = 0;
   private open = false;
   private openedAt = 0;
+  /** Unsubscribes the DIALOGUE_OPEN listener (Phase 2: owned cleanup). */
+  private offOpen: (() => void) | undefined;
 
   constructor(private scene: Phaser.Scene) {
     const px = 140;
@@ -50,10 +52,27 @@ export class DialogueBox {
     this.keyE = scene.input.keyboard!.addKey('E');
     this.keyEnter = scene.input.keyboard!.addKey('ENTER');
 
-    events.on(EV.DIALOGUE_OPEN, (payload: unknown) => {
+    // Phase 2 (KNOWN_ISSUES deferred hygiene): the subscription is owned —
+    // destroy() must be called on scene shutdown, otherwise a restarted
+    // UIScene accumulates duplicate listeners and opens N dialogues at once.
+    this.offOpen = events.on(EV.DIALOGUE_OPEN, (payload: unknown) => {
       const { key } = payload as { key: string };
       this.openDialogue(key);
     });
+  }
+
+  /**
+   * Release the bus subscription. Idempotent; call from the owning scene's
+   * shutdown path (UIScene registers it in its cleanups). Phaser game
+   * objects die with the scene — only the bus listener leaks across
+   * restarts, so that is what destroy() owns.
+   */
+  destroy(): void {
+    if (this.offOpen) {
+      this.offOpen();
+      this.offOpen = undefined;
+    }
+    this.open = false;
   }
 
   private openDialogue(key: string): void {

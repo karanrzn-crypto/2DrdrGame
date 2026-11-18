@@ -57,7 +57,13 @@
 - **`preserveDrawingBuffer: true`** روشن است (برای تست)؛ هزینهٔ FPS ناچیز ولی در فاز ۱۰ با پروفایل دوباره سنجیده می‌شود.
 - در محیط headless، FPS نرم‌افزاری است (~۴۴-۵۸)؛ عدد واقعی روی GPU کاربر بالاتر خواهد بود.
 
-## کارهای بهداشتی عقب‌انداخته‌شده (فاز ۲)
+## کارهای بهداشتی عقب‌انداخته‌شده (فاز ۲) — هر دو در فاز ۲ (بنیان فنی) انجام شد
 
-- پاکسازی event listenerها هنگام scene shutdown برای DialogueBox (الان فقط World/UI سطح بالا cleanup دارند).
-- عدم وابستگی UIScene به `timeSys` registry وقتی World هنوز create نشده (الان با گارد undefined امن است).
+- ~~پاکسازی event listenerها هنگام scene shutdown برای DialogueBox~~ — **رفع شد:** `DialogueBox.destroy()` مالک لغو اشتراک `DIALOGUE_OPEN` است و در cleanups صحنهٔ UI ثبت شده؛ تست یکپارچگی «destroy contract» در `tests/integration.test.ts` و «teardown بدون نشتی» پوشش می‌دهد.
+- ~~عدم وابستگی UIScene به `timeSys` registry وقتی World هنوز create نشده~~ — **رفع شد:** گارد undefined باقی است (صادقانه افت می‌کند) و علاوه بر آن در shutdown صحنهٔ World، `timeSys` از registry حذف می‌شود تا بعد از تخریب، رفرنس stale نخوانده شود (`WorldScene` shutdown).
+
+## محدودیت‌های فنی ثبت‌شدهٔ فاز ۲ (به‌عمد، طبق نقشه راه)
+
+- **InteractionSystem بیرون SystemCoordinator است** — عمدی: مقدار برگشتی `update()` منطق پرومپت/کلید E را هدایت می‌کند؛ coordinator برای سیستم‌های fire-and-forget است (مستند در PROJECT_ARCHITECTURE.md).
+- **خطاهای update سیستم‌ها rethrow نمی‌شوند** — سیاست: ایزوله + سینک (console.error) تا یک باگ شبیه‌سازی فریم را نکشد؛ تشخیص از طریق سینک. fail-fast فقط برای init و lifecycle است.
+- **GameConfig (createGameConfig) در محیط node تست نمی‌شود** — import Phaser به DOM نیاز دارد؛ گاردهای آن با tsc + بوت واقعی مرورگر راستی‌آزمایی شد و منطقِ خالصش از طریق `validateConfig.ts` پوشش کامل تست دارد.

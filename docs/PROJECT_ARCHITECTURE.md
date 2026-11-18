@@ -15,13 +15,17 @@
 ## ماژول‌ها و مسئولیت‌ها
 
 ```
-main.ts                    نقطهٔ ورود؛ پروب رندرر + گارد بوت + هوک تست __coppergate (عمدی)
+main.ts                    نقطهٔ ورود؛ پروب رندرر + گارد بوت + چرخهٔ حیات AppLifecycle + هوک تست __coppergate (عمدی)
 boot/RendererProbe.ts      خودآزمایی draw+readPixels برای WebGL/Canvas2D (خالص از Phaser)
 boot/BootGuard.ts          پنل خطای فارسی + watchdog بوت (فلگ مشترک __cgReady)
-config/GameConfig.ts       ثابت‌های تنظیم حس بازی + پیکربندی Phaser
-core/EventBus.ts           پیام‌رسانی بین صحنه‌ها (بدون Phaser)
-core/GameState.ts          تک‌منبع حقیقت جان/پول (خالص، تست‌پذیر)
-core/TimeSystem.ts         ساعت دنیا/فاز روز (خالص، تست‌پذیر)
+config/GameValues.ts       ثابت‌های تنظیم حس بازی — خالص از Phaser (برای تستِ اعتبارسنجی)
+config/validateConfig.ts   اعتبارسنجی خالص ثابت‌ها (assertValidGameConfig در BootScene)
+config/GameConfig.ts       پیکربندی Phaser + گارد ورودی‌های بوت (صحنه/رندرر)
+core/EventBus.ts           پیام‌رسانی بین صحنه‌ها — نسخهٔ سخت‌شدهٔ فاز ۲ (بدون Phaser)
+core/GameState.ts          تک‌منبع حقیقت جان/پول — کپسوله + اعتبارسنجی ورودی (خالص، تست‌پذیر)
+core/TimeSystem.ts         ساعت دنیا/فاز روز — سخت‌شده + wrap روز O(1) (خالص، تست‌پذیر)
+core/SystemCoordinator.ts  مالک ثبت/ترتیب init/update/dispose سیستم‌های دنیا + مرز خطا (خالص)
+core/AppLifecycle.ts       ماشین حالت فازهای بوت (idle→probing→booting→verifying→ready/failed/recovering) (خالص)
 core/format.ts             اعداد فارسی
 assets/TileIds.ts          شمارهٔ تایل‌ها + قاعدهٔ مانع (خالص)
 assets/Palette.ts          پالت رنگ واحد کل بازی
@@ -33,10 +37,10 @@ world/MapData.ts           authored نقشهٔ فاز ۱ + isWalkable (خالص�
 entities/Player.ts         کنترل بازیکن + ماشین حالت
 entities/Npc.ts            NPC حداقلی: idle/wander
 systems/InteractionSystem.ts  انتخاب نزدیک‌ترین تعامل (خالص)
-scenes/BootScene.ts        تولید همهٔ textureها + انتظار فونت
-scenes/WorldScene.ts       حلقهٔ شبیه‌سازی دنیا (زمان/برخورد/تعامل/جو)
-scenes/UIScene.ts          HUD/پرومپت/دیالوگ/مکث/banner
-ui/HUD.ts, ui/DialogueBox.ts
+scenes/BootScene.ts        اعتبارسنجی config (fail-fast) + تولید همهٔ textureها + انتظار فونت
+scenes/WorldScene.ts       حلقهٔ شبیه‌سازی دنیا — از طریق SystemCoordinator (ترتیب صریح + مرز خطا)
+scenes/UIScene.ts          HUD/پرومپت/دیالوگ/مکث/banner + cleanup کامل listenerها
+ui/HUD.ts, ui/DialogueBox.ts   DialogueBox مالک listener خودش است (destroy())
 data/Dialogues.ts          متن فارسی دیالوگ‌ها
 ```
 
@@ -57,6 +61,26 @@ UIScene    ── PAUSE_STATE    ──► WorldScene (resume)
 - **زمان:** همه‌چیز از `TimeSystem` (دقیقهٔ دنیا؛ ۲ دقیقه بر ثانیه واقعی).
 - **asset:** صفر دانلود؛ هر پیکسل از `Palette.ts`.
 - **متن بازی:** فارسی؛ دیالوگ بدون اصطلاح مکانیکی (§45).
+
+## تصمیمات معماری فاز ۲ (بنیان فنی)
+
+### مرز خطا (Error Boundaries) — سیاست واحد
+- **EventBus:** استثنای هر handler به «سینک استثنا» گزارش می‌شود (پیش‌فرض: `console.error` — قابل‌مشاهده، هرگز بی‌صدا)؛ بقیهٔ handlerهای همان رویداد همچنان اجرا می‌شوند؛ `emit` هرگز خطا را به فراخوان نمی‌رساند. emit بازگشتی هم‌زمان روی همان رویداد → `ReentrantEmitError` (جلوگیری از recursion بی‌نهایت)، از مسیر همان سینک گزارش می‌شود. معناشناسی snapshot: عضویت/لغو حین emit بر emit بعدی اثر دارد نه فعلی.
+- **SystemCoordinator:** خطای update یک سیستم → سینک → بقیهٔ سیستم‌های همان فریم ادامه می‌دهند. اما خطای **init** برای کل بوت fail-fast است: سیستم‌های init‌شده به ترتیب معکوس dispose می‌شوند و خطا دوباره پرتاب می‌شود (نیمه‌راهِ مقداردهی ممنوع). dispose همیشه معکوس، idempotent و امن است.
+- **قرارداد:** «خطای runtime ایزوله + قابل‌مشاهده»؛ «خطای lifecycle بلند و fail-fast».
+
+### چرخهٔ حیات (Lifecycle)
+- **AppLifecycle:** جدول انتقال صریح فازهای بوت؛ انتقال غیرمجاز = throw (ready/failed یک‌بارمصرف‌اند). main.ts هر گذار را از طریق این FSM ثبت می‌کند؛ `window.__coppergate.lifecycle` برای تست مرورگر در دسترس است (تأییدشده: `idle>probing>booting>verifying>ready` و مسیر retry کامل `verifying>recovering>booting>verifying>ready`).
+- **SystemCoordinator در WorldScene:** ترتیب صریح clock(10) → player(20) → npcs(30) → atmosphere(40)؛ atmosphere همیشه فازِ پیش‌رفتهٔ ساعت را می‌بیند. InteractionSystem عمداً بیرون coordinator است چون مقدار برگشتی آن منطق پرومپت/کلید E را هدایت می‌کند (سیستمِ fire-and-forget نیست).
+- **تخریب:** shutdown صحنهٔ World → disposeAll معکوس + حذف `timeSys` از registry (خواندن بعدی HUD با گارد undefined صادقانه افت می‌کند). UIScene → `DialogueBox.destroy()` در cleanups (نشتی listener مستند KNOWN_ISSUES رفع شد).
+
+### مالکیت state
+- فیلدهای `GameState` از فاز ۲ **private**اند؛ تنها مسیر mutation همان متدهای گارددار است — قاعدهٔ «فقط یک مالک» حالا در سطح type اجرا می‌شود نه سنت. پول صحیح است (کسری/NaN/∞ رد می‌شود)؛ جان همیشه در [0, maxHealth].
+- ورودی‌های شبیه‌سازی اعتبارسنجی می‌شوند: `TimeSystem.advance` مقدار غیرمتناهی/منفی را نادیده می‌گیرد؛ سازندهٔ آن روی سرعت نامعتبر TypeError می‌دهد؛ wrap روز O(1) است (delta غول‌پیکر ≠ حلقهٔ هزارتایی).
+
+### اعتبارسنجی پیکربندی
+- ثابت‌ها در `GameValues.ts` خالص‌اند تا تست، خودِ شیء `GAME` واقعی را اعتبارسنجی کند (نه یک کپیِ رونویسی‌شونده).
+- `BootScene.create` با `assertValidGameConfig(GAME)` قبل از هر تولید texture fail-fast می‌کند؛ `createGameConfig` ورودی‌های بوت (صحنه خالی/رندرر ناشناخته) را با خطای شفاف رد می‌کند.
 
 ## درس‌های فاز ۱ (برای ایجنت بعدی)
 

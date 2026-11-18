@@ -22,7 +22,23 @@
 - شواهد: `docs/screenshots/` + `docs/TESTING.md`
 - خروجی (بر اساس §76-C): بازیکن می‌تواند وارد دنیا شود، طبیعی حرکت کند، درست برخورد کند و با شیء تعامل کند. ✅
 
-## فاز ۲ — شهر کوچک کامل — **Planned**
+## ✅ فاز ۲ — بنیان فنی (Technical Foundation) — **Complete**
+> طبق دستور Phase 2 (فاز فنی، مستقل از «فاز ۲ محتوایی» نقشهٔ راه که در ادامه آمده است).
+
+- [x] EventBus سخت‌شده: ایزوله‌سازی خطا + سینک استثنا، `once`، گارد reentrancy (`ReentrantEmitError`)، معناشناسی snapshot مستند، introspection (`listenerCount`/`eventNames`)، dedupe بازثبت
+- [x] GameState کپسوله: فیلدهای private + getter، اعتبارسنجی کامل ورودی (NaN/∞/کسری رد)، `setMaxHealth` با clamp، `reset()`
+- [x] TimeSystem سخت‌شده: اعتبارسنجی سازنده (TypeError)، رد دلتای غیرمتناهی/منفی، wrap روز O(1) (delta غول‌پیکر بدون حلقه)
+- [x] `SystemCoordinator` جدید: ثبت یکتا با id + ترتیب صریح، init ترتیبی fail-fast با dispose معکوس، update با مرز خطای هرسیستم، dispose معکوس idempotent، سینک استثنا
+- [x] `AppLifecycle` جدید: ماشین حالت فازهای بوت با جدول انتقال صریح + یک‌بارمصرف‌بودن ready/failed؛ در main.ts ادغام شد (`__coppergate.lifecycle`)
+- [x] اعتبارسنجی پیکربندی: `validateConfig.ts` خالص + fail-fast در BootScene + گارد ورودی‌های `createGameConfig` + استخراج `GameValues.ts` (خالص از Phaser)
+- [x] مالکیت/پاکسازی منابع: رفع نشتی listener دیالوگ (`DialogueBox.destroy()`)، disposeAll + حذف registry در shutdown صحنهٔ World، پاکسازی listenerهای UIScene
+- [x] تست‌ها: ۵۱ → **۱۵۰** (۹ فایل تست جدید/گسترش‌یافته؛ تست یکپارچگی جریان‌های World↔UI و قرارداد HUD)
+- [x] mutation testing هدفمند: **۱۲/۱۲ killed** (`scripts/mutation-test.mjs`)، بازگردانی byte-for-byte تأیید شد
+- [x] tsc strict صفر خطا؛ بیلد پروداکشن سبز؛ مرورگر واقعی: بوت سالم + دو سناریوی خرابی (deadpipeline/contextdied) همه با FSM صحیح → ready؛ حرکت/برخورد بازیکن تأیید
+- شواهد: `docs/screenshots/phase2-*.png` + `docs/TESTING.md`
+- خروجی: پایهٔ فنی قابل‌اعتماد و نگه‌داشت‌پذیر قبل از هر محتوای گیم‌پلی. ✅
+
+## فاز ۲ محتوایی (طبق نقشهٔ اصلی) — شهر کوچک کامل — **Planned**
 داخل‌های معنادار: سالون (نوشیدنی/شایعه)، مغازهٔ عمومی (خرید/فروش)، دفتر کلانتر، پایداری اسب، دکتر؛ NPCهای ثابت با نقش؛ صدا محیطی اولیه. خروجی: شهر قابل‌کاوش با عملکرد واقعی ساختمان‌ها.
 
 ## فاز ۳ — NPCهای زنده — **Planned**

@@ -29,6 +29,10 @@ export class UIScene extends Phaser.Scene {
   create(): void {
     this.hud = new HUD(this);
     this.dialogue = new DialogueBox(this);
+    // Phase 2: DialogueBox owns a bus listener; its cleanup is registered
+    // here so a UIScene restart can never accumulate duplicates
+    // (KNOWN_ISSUES deferred hygiene item, resolved).
+    this.cleanups.push(() => this.dialogue.destroy());
 
     // Interaction hint (bottom center)
     this.promptText = this.add.text(GAME.width / 2, GAME.height - 148, '', {

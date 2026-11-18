@@ -34,7 +34,23 @@ describe('selectInteractable', () => {
     expect(selectInteractable(tight, 0, 0)).toBeNull();
   });
 
+  it('the range boundary is INCLUSIVE: distance exactly == range is in range', () => {
+    const list = [mk('edge', 5, 0, 5)]; // distance 5, range 5
+    expect(selectInteractable(list, 0, 0)?.id).toBe('edge');
+    expect(selectInteractable([mk('edge', 5, 0, 4.999)], 0, 0)).toBeNull();
+  });
+
+  it('a target on the player position (distance 0) is always selected', () => {
+    const list = [mk('zero', 0, 0, 1)];
+    expect(selectInteractable(list, 0, 0)?.id).toBe('zero');
+  });
+
   it('returns null for an empty list', () => {
     expect(selectInteractable([], 0, 0)).toBeNull();
+  });
+
+  it('ties: when two targets are exactly equidistant, the FIRST registered wins', () => {
+    const list = [mk('first', 10, 0, 40), mk('second', -10, 0, 40)];
+    expect(selectInteractable(list, 0, 0)?.id).toBe('first');
   });
 });

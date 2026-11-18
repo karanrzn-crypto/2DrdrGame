@@ -43,6 +43,7 @@
  */
 import Phaser from 'phaser';
 import { createGameConfig, SCENES, GAME } from './config/GameConfig';
+import { AppLifecycle } from './core/AppLifecycle';
 import { BootScene } from './scenes/BootScene';
 import { WorldScene } from './scenes/WorldScene';
 import { UIScene } from './scenes/UIScene';
@@ -76,14 +77,26 @@ interface CoppergateHook {
   game: Phaser.Game;
   sceneKeys: string[];
   rendererChoice: RendererChoice;
+  /** Phase 2: boot state machine — browser tests assert lifecycle.phase. */
+  lifecycle: AppLifecycle;
 }
 
 function boot(): void {
+  /** Phase 2: explicit boot phases — illegal flows now throw instead of
+   *  silently double-firing a panel or a ready flag (see AppLifecycle). */
+  const lifecycle = new AppLifecycle();
+  /** Terminal failure: record the phase, then open the visible panel. */
+  const panelFailure = (title: string, detail: string): void => {
+    lifecycle.transition('failed'); // one-shot from any active phase
+    showBootError(title, detail);
+  };
+
   const probe = probeRenderer();
   const initial = chooseRenderer(probe);
 
   if (initial === 'none') {
-    showBootError(
+    lifecycle.transition('probing'); // idle → probing → failed (recorded)
+    panelFailure(
       'مرورگر شما امکان رندر بازی را ندارد',
       'نه WebGL و نه Canvas 2D در این مرورگر قابل استفاده نبود.\n'
       + describeGL() + '\n'
@@ -128,6 +141,7 @@ function boot(): void {
     if (confirmed) return;
     confirmed = true;
     disarmAll();
+    lifecycle.transition('ready'); // one-shot: verifying → ready, final
     markGameReady();
   };
 
@@ -143,6 +157,8 @@ function boot(): void {
     const rendererType = choice === 'auto' ? Phaser.AUTO : Phaser.CANVAS;
     try {
       game = new Phaser.Game(createGameConfig([BootScene, WorldScene, UIScene], rendererType));
+      // The game object exists — World may still fail, but the boot phase is real.
+      lifecycle.transition('booting');
     } catch (err) {
       game = null;
       const msg = err instanceof Error ? err.message : String(err);
@@ -156,7 +172,7 @@ function boot(): void {
         + 'after the previous renderer failed. ' + glInfo,
       );
     }
-    hook.__coppergate = { game, sceneKeys: Object.values(SCENES), rendererChoice: choice };
+    hook.__coppergate = { game, sceneKeys: Object.values(SCENES), rendererChoice: choice, lifecycle };
     armWatchdog(choice);
     startReadinessPoll();
     return true;
@@ -172,6 +188,8 @@ function boot(): void {
   const retryWithCanvas = (reason: string): boolean => {
     const next = retryRenderer(initial, attempt + 1);
     if (next !== 'canvas' || !probe.canvas2dDraws || !game) return false;
+    // From 'booting' (watchdog fired) or 'verifying' (dead output) — both legal.
+    lifecycle.transition('recovering');
     attempt += 1;
     confirmed = false;
     samples = [];
@@ -219,7 +237,7 @@ function boot(): void {
       const pos = canvasInViewport(game.canvas);
       if (!pos.ok) {
         disarmAll();
-        showBootError(
+        panelFailure(
           'بازی اجرا شد ولی بوم آن خارج از صفحهٔ نمایش قرار گرفت',
           'دنیای بازی فعال بود و محتوا تولید می‌کرد، اما بوم بازی داخل پنجرهٔ مرورگر نبود'
           + ' — این یک ایراد چیدمان صفحه است، نه شتاب‌دهی سخت‌افزاری.\n'
@@ -243,7 +261,7 @@ function boot(): void {
       + '(' + verdict.detail + ')';
     if (!retryWithCanvas(reason)) {
       disarmAll();
-      showBootError(
+      panelFailure(
         'مرورگر شما امکان رندر بازی را ندارد',
         'دنیای بازی فعال بود ولی هیچ خروجی قابل‌مشاهده‌ای روی صفحه تولید نشد — حتی پس از تلاش مجدد با Canvas.\n'
         + visualDiagnostics() + '\n'
@@ -283,11 +301,14 @@ function boot(): void {
       }
       if (!isWorldRunning()) return;
       stopPoll();
+      // World is up — sampling/verification phase begins (booting → verifying).
+      lifecycle.transition('verifying');
       sampleTimer = window.setTimeout(runSampleChain, VISIBLE_CHECK.GRACE_MS);
     }, 250);
   };
 
   // Attempt 0 — the probe-based choice.
+  lifecycle.transition('probing'); // idle → probing: the decision is made below
   if (tryBoot(initial)) {
     return;
   }
@@ -309,7 +330,7 @@ function boot(): void {
 
   // No renderer booted — open the panel with everything we collected.
   disarmAll();
-  showBootError(
+  panelFailure(
     'مرورگر شما امکان رندر بازی را ندارد',
     'هیچ‌یک از رندررهای بازی اجرا نشد.\n'
     + failures.join('\n') + '\n'

@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import { GAME, SCENES } from '../config/GameConfig';
 import { events, EV } from '../core/EventBus';
+import { SystemCoordinator, Tickable } from '../core/SystemCoordinator';
 import { TimeSystem, PHASE_VISUALS } from '../core/TimeSystem';
 import { buildMap } from '../world/MapData';
 import { TILE_SHEET_KEY, TILE_SIZE } from '../assets/TileFactory';
@@ -24,6 +25,8 @@ export class WorldScene extends Phaser.Scene {
   private player!: Player;
   private timeSys!: TimeSystem;
   private interactions!: InteractionSystem;
+  /** Owns init/update/dispose ordering of the world simulation systems. */
+  private systems!: SystemCoordinator;
   private npcs: Npc[] = [];
   private overlay!: Phaser.GameObjects.Rectangle;
   private dust!: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -153,6 +156,27 @@ export class WorldScene extends Phaser.Scene {
     this.keyEsc = kb.addKey('ESC');
     kb.addCapture('W,A,S,D,E,ESC,SHIFT,UP,DOWN,LEFT,RIGHT,ENTER');
 
+    // --- system registration (Phase 2: explicit order, error boundaries) ------
+    // Execution order: clock first (atmosphere reads the phase it advanced),
+    // then the player, then NPCs, then atmosphere. The interaction system is
+    // driven explicitly in update() because its selection RESULT steers the
+    // prompt/E-key logic (not a fire-and-forget system).
+    this.systems = new SystemCoordinator();
+    this.systems.register('clock', { update: (dt: number) => this.timeSys.advance(dt / 1000) } satisfies Tickable, 10);
+    this.systems.register('player', {
+      update: (): void => {
+        this.player.update();
+        this.player.postUpdate();
+      },
+    }, 20);
+    this.systems.register('npcs', {
+      update: (dt: number): void => {
+        for (const npc of this.npcs) npc.update(dt);
+      },
+    } satisfies Tickable, 30);
+    this.systems.register('atmosphere', { update: (dt: number): void => this.updateAtmosphere(dt) } satisfies Tickable, 40);
+    this.systems.initAll();
+
     // --- dialogue freeze coordination -------------------------------------------
     this.cleanups.push(events.on(EV.DIALOGUE_CLOSE, () => {
       this.dialogueOpen = false;
@@ -170,31 +194,19 @@ export class WorldScene extends Phaser.Scene {
       window.removeEventListener('blur', onBlur);
       this.cleanups.forEach((off) => off());
       this.cleanups = [];
+      // Phase 2: reverse-order disposal, idempotent; the stale clock leaves
+      // the registry so a later HUD read degrades honestly (guard exists).
+      this.systems.disposeAll();
+      this.registry.remove('timeSys');
     });
   }
 
   update(_time: number, delta: number): void {
     const dt = Math.min(delta, 50);
 
-    // World clock — clamped delta (directive §16).
-    this.timeSys.advance(dt / 1000);
-    const visual = PHASE_VISUALS[this.timeSys.phase];
-    this.overlay.fillColor = visual.tint;
-    this.overlay.setAlpha(visual.alpha);
-
-    // Simulation
-    this.player.update();
-    this.player.postUpdate();
-    for (const npc of this.npcs) npc.update(dt);
-
-    // Running dust
-    if (this.player.isRunning) {
-      this.dustTimer += dt;
-      if (this.dustTimer > 120) {
-        this.dustTimer = 0;
-        this.dust.emitParticleAt(this.player.x - 2, this.player.y - 2);
-      }
-    }
+    // Ordered simulation through the coordinator — one throwing system is
+    // reported to its sink and cannot freeze the frame (Phase 2 objective 6).
+    this.systems.updateAll(dt);
 
     // Interactions
     const sel = this.interactions.update(this.player.x, this.player.y - 8);
@@ -219,5 +231,20 @@ export class WorldScene extends Phaser.Scene {
     this.player.setFrozen(true);
     this.npcs.forEach((n) => n.freeze());
     events.emit(EV.DIALOGUE_OPEN, { key });
+  }
+
+  /** Day/night tint + running dust (runs AFTER the clock system advanced). */
+  private updateAtmosphere(dt: number): void {
+    const visual = PHASE_VISUALS[this.timeSys.phase];
+    this.overlay.fillColor = visual.tint;
+    this.overlay.setAlpha(visual.alpha);
+
+    if (this.player.isRunning) {
+      this.dustTimer += dt;
+      if (this.dustTimer > 120) {
+        this.dustTimer = 0;
+        this.dust.emitParticleAt(this.player.x - 2, this.player.y - 2);
+      }
+    }
   }
 }

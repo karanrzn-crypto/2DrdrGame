@@ -7,6 +7,18 @@
  *
  * Speed: `minutesPerRealSecond` world-minutes per real second.
  * Default 2 => a full 24h day lasts 12 real minutes.
+ *
+ * Phase 2 contract (hardened):
+ * - Constructor validation: a non-finite or non-positive speed and a
+ *   non-finite start are programmer errors and throw TypeError immediately
+ *   (a silently frozen or NaN clock is worse than a loud failure).
+ * - startMinutes is wrapped into [0, 1440) — a negative or >24h start is
+ *   interpreted modulo a full day instead of creating an invalid state.
+ * - advance() rejects non-finite and negative deltas (NaN used to slip
+ *   through the `< 0` check and poison the clock).
+ * - Day wrap is O(1): huge deltas (a save-loading fast-forward, a sleeping
+ *   tab with a giant delta) jump directly instead of looping 1440s thousands
+ *   of times; the wrapped result is identical to the old loop's.
  */
 import { toFa } from './format';
 
@@ -28,6 +40,8 @@ export const PHASE_VISUALS: Record<DayPhase, PhaseVisual> = {
   night: { tint: 0x14264f, alpha: 0.45, label: 'شب' },
 };
 
+const MINUTES_PER_DAY = 1440;
+
 export class TimeSystem {
   /** Minutes since midnight, [0, 1440). */
   minutes: number;
@@ -38,21 +52,29 @@ export class TimeSystem {
     public minutesPerRealSecond = 2,
     startMinutes = 7 * 60 + 30,
   ) {
-    this.minutes = startMinutes;
+    if (!Number.isFinite(minutesPerRealSecond) || minutesPerRealSecond <= 0) {
+      throw new TypeError(
+        `TimeSystem: minutesPerRealSecond must be a finite number > 0 (got ${minutesPerRealSecond})`,
+      );
+    }
+    if (!Number.isFinite(startMinutes)) {
+      throw new TypeError(`TimeSystem: startMinutes must be finite (got ${startMinutes})`);
+    }
+    this.minutes = ((startMinutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
   }
 
   /**
    * Advance the clock by real seconds. Delta-time clamping is the caller's
-   * responsibility; this method accepts any non-negative value and wraps
-   * correctly (directive §16: large delta times must be handled).
+   * responsibility; this method accepts any finite non-negative value and
+   * wraps correctly (directive §16: large delta times must be handled).
+   * Non-finite and negative values leave the clock untouched.
    */
   advance(realSeconds: number): void {
-    if (realSeconds < 0) return;
-    this.minutes += realSeconds * this.minutesPerRealSecond;
-    while (this.minutes >= 1440) {
-      this.minutes -= 1440;
-      this.day += 1;
-    }
+    if (!Number.isFinite(realSeconds) || realSeconds < 0) return;
+    const total = this.minutes + realSeconds * this.minutesPerRealSecond;
+    const days = Math.floor(total / MINUTES_PER_DAY);
+    this.minutes = total - days * MINUTES_PER_DAY;
+    this.day += days;
   }
 
   static phaseOf(minutes: number): DayPhase {

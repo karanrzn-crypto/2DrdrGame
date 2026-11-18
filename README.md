@@ -2,7 +2,7 @@
 
 یک بازی **۲بعدی وسترن اکشن-ماجرایی با دنیای باز، اورجینال** که در مرورگر اجرا می‌شود. الهام طراحی: عمق سیستمی و حس «دنیای زنده» در Red Dead Redemption — بدون هیچ محتوای کپی‌شده.
 
-> وضعیت: **فاز ۱ — پروتوتایپ قابل‌بازی** (نقشه راه کامل در `docs/DEVELOPMENT_ROADMAP.md`)
+> وضعیت: **فاز ۲ (بنیان فنی) کامل شد — روی پروتوتایپ فاز ۱** (نقشه راه کامل در `docs/DEVELOPMENT_ROADMAP.md`)
 
 ![نمای شهر](docs/screenshots/phase1-town-day.png)
 
@@ -31,10 +31,12 @@
 
 ```bash
 npm install        # یک بار
-npm run dev        # توسعه: http://localhost:5173
-npm test           # تست‌های واحد (Vitest)
-npm run build      # بیلد پروداکشن در dist/
-npm run preview    # پیش‌نمایش بیلد: http://localhost:4173
+npm run dev         # توسعه: http://localhost:5173
+npm test            # تست‌های واحد/یکپارچگی (Vitest — ۱۵۰ تست)
+npm run typecheck   # بررسی strict تایپ (tsc)
+npm run mutation-test # تست mutation قواعد هسته
+npm run build       # بیلد پروداکشن در dist/
+npm run preview     # پیش‌نمایش بیلد: http://localhost:4173
 ```
 
 نسخهٔ منتشرشده: `https://karanrzn-crypto.github.io/2DrdrGame/` (شاخهٔ `gh-pages`)
@@ -53,16 +55,17 @@ npm run preview    # پیش‌نمایش بیلد: http://localhost:4173
 
 ```
 src/
-  config/    GameConfig — ثابت‌ها و پیکربندی Phaser
-  core/      EventBus, GameState (تک‌منبع حقیقت), TimeSystem, format
+  config/    GameValues (ثابت‌های خالص), validateConfig, GameConfig (پیکربندی Phaser)
+  core/      EventBus, GameState, TimeSystem, SystemCoordinator, AppLifecycle, format
   assets/    Palette, PixelPen, TileFactory, CharFactory, PropFactory, TileIds
   world/     MapData — دادهٔ authored نقشه + قواعد عبور
   entities/  Player, Npc
   systems/   InteractionSystem
-  scenes/    BootScene, WorldScene, UIScene
+  scenes/    BootScene (fail-fast config), WorldScene (SystemCoordinator), UIScene
   ui/        HUD, DialogueBox
   data/      Dialogues (متن فارسی)
-tests/       تست‌های واحد منطق خالص
+tests/       تست‌های واحد و یکپارچگی منطق خالص (۱۲ فایل)
+scripts/     ابزارهای ماتریس بوت + mutation-test
 docs/        مستندات طراحی/معماری/نقشه راه/تست
 ```
 

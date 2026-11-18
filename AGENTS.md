@@ -16,6 +16,8 @@
 npm install          # نصب
 npm run dev          # توسعه روی :5173
 npm test             # Vitest — باید قبل از هر push سبز باشد
+npm run typecheck    # tsc --noEmit — باید صفر خطا باشد
+npm run mutation-test # تست mutation هدفمند قواعد هسته (باید ۱۲/۱۲ killed باشد)
 npm run build        # tsc + vite build → dist/  (باید بدون خطا باشد)
 npm run preview      # تست بیلد روی :4173
 ```
@@ -32,11 +34,13 @@ npm run preview      # تست بیلد روی :4173
 
 ## چگونه تست کنیم (شامل محیط headless)
 
-- تست واحد: فقط ماژول‌های خالص (بدون import Phaser): `src/core/*`, `src/systems/InteractionSystem.ts`, `src/world/MapData.ts`, `src/assets/TileIds.ts`.
+- تست واحد: فقط ماژول‌های خالص (بدون import Phaser): `src/core/*`, `src/config/GameValues.ts`, `src/config/validateConfig.ts`, `src/systems/InteractionSystem.ts`, `src/world/MapData.ts`, `src/assets/TileIds.ts`.
+- **سیاست مرز خطا (فاز ۲):** استثنای handler رویداد و استثنای update سیستم ایزوله + سینک می‌شود (console.error) — هرگز در سکوت؛ خطای init و انتقال غیرمجاز lifecycle بلند و fail-fast است. کد جدید باید همین قرارداد را نگه دارد؛ منطق گیم‌پلی هرگز در listener رویدادِ تکی حیاتی نگذارید.
+- **ثبت سیستم جدید:** هر حلقهٔ شبیه‌سازی جدید در WorldScene باید به‌صورت سیستم با `order` صریح به `SystemCoordinator` ثبت شود (clock=10 مرجع است؛ سیستم‌هایی که به ساعت وابسته‌اند بعد از آن). تخریب منابع در `dispose()` همان سیستم.
 - مرورگر: `npm run build && npm run preview` سپس agent-browser روی `http://localhost:4173`.
-  - در این محیط، اسکرین‌شات صفحهٔ `agent-browser` برای WebGL سیاه می‌شود؛ از هوک `window.__coppergate` (عمدی و مستند در `main.ts`) + `canvas.toDataURL()` برای شواهد بصری استفاده کن. **این هوک را حذف نکن؛ secret هم ندارد.**
-  - شبیه‌سازی «GPU مرده» و «بدون رندرر» برای تست بوت: `scripts/make_deadgpu_fixture.mjs` و `scripts/make_norenderer_fixture.mjs` (روی کپی dist کار می‌کنند — الگو در TESTING.md، ماتریس بوت).
-  - کلیدهای مصنوعی باید زمان‌بندی انسانی داشته باشند: `keydown` → صبر ≥ یک فریم → `keyup`. (در Phaser 4، keyup پرچم `_justDown` را صفر می‌کند — برخلاف Phaser 3.)
+  - در این محیط، اسکرین‌شات صفحهٔ `agent-browser` برای WebGL سیاه می‌شود؛ از هوک `window.__coppergate` (عمدی و مستند در `main.ts`) + `canvas.toDataURL()` برای شواهد بصری استفاده کن. **این هوک را حذف نکن؛ secret هم ندارد.** فاز ۲: `window.__coppergate.lifecycle.phase/history` هم برای تست بوت در دسترس است — حذفش نکن.
+  - شبیه‌سازی «GPU مرده» و «بدون رندرر» برای تست بوت: `scripts/make_boot_fixture.mjs` (روی کپی dist کار می‌کند — الگو در TESTING.md، ماتریس بوت).
+  - کلیدهای مصنوعی باید زمان‌بندی انسانی داشته باشند: `keydown` → صبر ≥ یک فریم → `keyup`. (در Phaser 4، keyup پرچم `_justDown` را صفر می‌کند — برخلاف Phaser 3.) با `agent-browser` dispatch مستقیم `KeyboardEvent` با `code`/`keyCode` روی window مطمئن‌تر از `keydown w` است.
 - اسکرین‌شات‌های مرجع در `docs/screenshots/`.
 
 ## دام‌های شناخته‌شده (دوباره گیر نیا)
@@ -57,8 +61,10 @@ npm run preview      # تست بیلد روی :4173
 
 | داده | مالک | خواننده‌ها |
 |---|---|---|
-| health, money | `GameState.game` | HUD |
+| health, money | `GameState.game` (فاز ۲: private — فقط متدهای گارددار) | HUD |
 | زمان دنیا/فاز روز | `TimeSystem` (ساخته‌شده در WorldScene، از طریق registry) | WorldScene, HUD |
+| ترتیب init/update/dispose سیستم‌ها | `SystemCoordinator` صحنهٔ World | WorldScene.update |
+| فازهای بوت (probing/booting/…) | `AppLifecycle` در main.ts (`__coppergate.lifecycle`) | تست‌های مرورگر |
 | تعامل جاری | `InteractionSystem.currentId` | WorldScene |
 | باز/بسته بودن دیالوگ و مکث | EventBus events | World ↔ UI |
 
@@ -68,8 +74,10 @@ npm run preview      # تست بیلد روی :4173
 - مقادیر جدید با مقدار پیش‌فرض load شوند؛ دادهٔ خراب → پیام شفاف، نه crash.
 - تا آن زمان `GameState` فقط in-memory است — به localStorage در فازهای ≤۷ اعتماد نکن.
 
-## وضعیت فعلی (پس از رفع باگ انتشار فاز ۱)
+## وضعیت فعلی (پس از فاز ۲ — بنیان فنی)
 
-- پیاده‌سازی‌شده و تأییدشده در مرورگر: حرکت/دویدن/برخورد/دوربین/تعامل/دیالوگ/مکث/ساعت روز-شب/HUD/پیکسل‌آرت پروسیجرال/تست واحد.
-- لایهٔ مقاوم‌سازی بوت: پروب رندرر + fallback Canvas (هم از مسیر پروب، هم از مسیر شکست واقعی بوت Phaser — سیاست `retryRenderer`) + پنل خطای فارسی + دو watchdog + گارد فونت (ماتریس بوت در TESTING.md).
-- بعدی: فاز ۲ (شهر کامل با مغازه‌های واقعی) طبق `docs/DEVELOPMENT_ROADMAP.md`.
+- پیاده‌سازی‌شده و تأییدشده در مرورگر: حرکت/دویدن/برخورد/دوربین/تعامل/دیالوگ/مکث/ساعت روز-شب/HUD/پیکسل‌آرت پروسیجرال.
+- لایهٔ مقاوم‌سازی بوت: پروب رندرر + fallback Canvas + پنل خطای فارسی + دو watchdog + گارد فونت — حالا با ماشین حالت `AppLifecycle` (فازها تست‌پذیر؛ ۱۲/۱۲ mutation killed).
+- هستهٔ سخت‌شدهٔ فاز ۲: EventBus (ایزوله‌سازی خطا/once/reentrancy)، GameState (کپسوله/اعتبارسنجی)، TimeSystem (اعتبارسنجی/O(1) wrap)، SystemCoordinator (ثبت/ترتیب/مرز خطا/تخریب معکوس)، اعتبارسنجی config با fail-fast در بوت، رفع نشتی listener دیالوگ.
+- تست: ۱۵۰ تست سبز (۱۲ فایل) + mutation ۱۲/۱۲ + typecheck صفر خطا + بیلد سبز + سه سناریوی بوت مرورگر سبز.
+- بعدی: فاز ۲ محتوایی (شهر کامل با مغازه‌های واقعی) طبق `docs/DEVELOPMENT_ROADMAP.md` — **فاز ۳ شروع نشود**.

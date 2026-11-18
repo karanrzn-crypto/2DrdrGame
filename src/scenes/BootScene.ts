@@ -3,7 +3,8 @@
  * animations, waits for the Persian web font, then starts the game.
  */
 import Phaser from 'phaser';
-import { SCENES } from '../config/GameConfig';
+import { SCENES, GAME } from '../config/GameConfig';
+import { assertValidGameConfig } from '../config/validateConfig';
 import { buildTileSheet } from '../assets/TileFactory';
 import {
   buildCharSheet, createCharAnims,
@@ -17,6 +18,12 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Phase 2: fail fast on an invalid config — a bad tuning constant must
+    // become a visible boot error, never a silently broken world. This runs
+    // BEFORE any texture generation; the thrown error reaches the BootGuard
+    // panel (window error handler is already installed by main.ts).
+    assertValidGameConfig(GAME);
+
     buildTileSheet(this);
     buildCharSheet(this, 'char-eli', ELI_LOOK);
     buildCharSheet(this, 'char-pete', PETE_LOOK);

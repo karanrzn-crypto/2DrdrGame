@@ -1,37 +1,27 @@
 /**
- * GameConfig.ts — central constants + the Phaser game configuration.
- * (Pure constants module; the config factory is the only Phaser touchpoint.)
+ * GameConfig.ts — the Phaser game configuration factory.
+ * Pure constants live in GameValues.ts (Phaser-free, unit-testable);
+ * this module is the only Phaser touchpoint of the config layer.
  */
 import Phaser from 'phaser';
+import { GAME, SCENES } from './GameValues';
 
-/** Game-wide tuning constants (single place to adjust game feel). */
-export const GAME = {
-  /** Logical canvas size; Scale.FIT letterboxes it into the browser window. */
-  width: 960,
-  height: 540,
-  /** Camera zoom: 16px tiles render at 48px on screen. */
-  camZoom: 3,
-  tileSize: 16,
-  /** Player movement (px/second, world units). */
-  walkSpeed: 68,
-  runSpeed: 112,
-  acceleration: 520,
-  drag: 640,
-  /** Time of day speed: world-minutes per real second. */
-  minutesPerRealSecond: 2,
-  /** Clear color of the canvas (also the page background in index.html).
-   * Single source of truth — createGameConfig and the boot-time
-   * visible-output sampler both read it. */
-  backgroundColor: '#14100b',
-} as const;
+// Re-exported so existing imports (`from '../config/GameConfig'`) keep
+// working; the pure constants themselves live in GameValues.ts.
+export { GAME, SCENES };
 
-export const SCENES = {
-  BOOT: 'Boot',
-  WORLD: 'World',
-  UI: 'UI',
-} as const;
+/** Renderer types Phaser supports (guarded in createGameConfig). */
+const SUPPORTED_RENDERER_TYPES: readonly number[] = [Phaser.AUTO, Phaser.CANVAS, Phaser.WEBGL];
 
 export function createGameConfig(scenes: Phaser.Types.Scenes.SceneType[], rendererType: number): Phaser.Types.Core.GameConfig {
+  // Phase 2: boot inputs are validated, never trusted (objective 7).
+  if (!Array.isArray(scenes) || scenes.length === 0) {
+    throw new Error('createGameConfig: at least one scene is required');
+  }
+  if (!SUPPORTED_RENDERER_TYPES.includes(rendererType)) {
+    throw new Error(`createGameConfig: unsupported rendererType ${rendererType} `
+      + `(expected one of ${SUPPORTED_RENDERER_TYPES.join(', ')})`);
+  }
   return {
     type: rendererType,
     width: GAME.width,
