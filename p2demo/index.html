@@ -1,11 +1,21 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0; url=demo.html" />
-    <title>Project 2 — Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project 2</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; }
+      #game { position: fixed; inset: 0; overflow: hidden; background: #000; }
+      #engine-error { position: fixed; z-index: 10; top: 3rem; left: 50%; transform: translateX(-50%); width: min(40rem, calc(100% - 2rem)); box-sizing: border-box; padding: 1.5rem; border: 1px solid #c55; border-radius: 8px; background: #2a1414; }
+      #engine-error[hidden] { display: none; }
+      #engine-error h1 { margin-top: 0; font-size: 1.25rem; }
+    </style>
+    <script type="module" crossorigin src="./assets/index-C9pwYnv9.js"></script>
   </head>
-  <body style="background:#111;color:#eee;font-family:system-ui,sans-serif;text-align:center;padding-top:3rem">
-    <p><a href="demo.html" style="color:#e2b878">ورود به دموی موتور بازی</a></p>
+  <body>
+    <div id="game"></div>
+    <div id="engine-error" role="alert" hidden></div>
+    <noscript>This game needs JavaScript enabled.</noscript>
   </body>
 </html>
